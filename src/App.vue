@@ -29,7 +29,8 @@
                 <div class="sb-nav-link-icon"><i class="fas fa-tachometer-alt" id="nav-link-icon"></i>Monitor</div>
               </a>
               <a class="nav-link">
-                <div class="sb-nav-link-icon"><i class="fas fa-tachometer-alt" id="nav-link-icon"></i><router-link to="/historical" id="router-link">Historical Data</router-link></div>
+                <div class="sb-nav-link-icon"><i class="fas fa-tachometer-alt" id="nav-link-icon"></i><router-link
+                    to="/historical" id="router-link">Historical Data</router-link></div>
               </a>
             </div>
           </div>
@@ -75,8 +76,9 @@
                       <div id="image-carousel-1" class="carousel slide" data-bs-ride="carousel">
                         <div class="carousel-inner">
                           <div class="carousel-item active">
-                            <img :src="currentData.Image_before_src" :alt="currentData.Image_before_alt"
-                              class="d-block w-100" width="100%" height="320" />
+                            <!-- <img :src=currentData.Image_before_src :alt="currentData.Image_before_alt"
+                              class="d-block w-100" width="100%" height="320" /> -->
+                              <img id="camera-stream" src="http://127.0.0.1:5000/video_feed" alt="Camera Stream" class="d-block w-100" width="100%" height="320">
                           </div>
                         </div>
                       </div>
@@ -110,13 +112,34 @@
               </div>
             </div>
           </div>
-        </div>
-        <section>
-          <div class="button-container">
+          <section>
+            <!-- <div class="button-container">
             <v-btn v-on:click="prevData" class="btn btn-prev" id="btn-prev">Prevent</v-btn>
             <v-btn v-on:click="nextData" class="btn btn-next" id="btn-next">Next</v-btn>
-          </div>
-        </section>
+          </div> -->
+            <div class="text-gray-700 flex flex-row flex-wrap items-center justify-center gap-1 break-all text-xs">
+              <span class="text-gray-700 text-[100px] font-semibold uppercase mt-2 mr-2">Class :</span>
+              <div class="data-class flex flex-wrap">
+                <div class="break-normal mt-2 flex">
+                  <template v-for="(item, index) in currentData.Classes">
+                    <div v-if="index === getFirstIndex(item)" :key="index" class="flex items-center">
+                      <template v-if="countClass(item) > 1">
+                        <span
+                          class="transition-width relative flex h-6 select-none items-center justify-items-start overflow-hidden rounded-full border-2 text-xs shadow duration-200 ease-in-out w-16 px-2 bg-purple-50 border-purple-600 text-purple-600"
+                          style="margin-right: 5px;">{{ item }} x {{ countClass(item) }}</span>
+                      </template>
+                      <template v-else>
+                        <span
+                          class="transition-width relative flex h-6 select-none items-center justify-items-start overflow-hidden rounded-full border-2 text-xs shadow duration-200 ease-in-out w-16 px-2 bg-purple-50 border-purple-600 text-purple-600"
+                          :key="index" style="margin-right: 5px;">{{ item }}</span>
+                      </template>
+                    </div>
+                  </template>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
       </main>
     </div>
     <div v-else-if="$route.path === '/historical'" id="layoutSidenav_content">
@@ -128,6 +151,9 @@
 <script>
 export default {
   name: 'App',
+  mounted() {
+    this.requestCameraStream();
+  },
   data() {
     return {
       simulatedData: [
@@ -140,6 +166,21 @@ export default {
           Time: '12:00 p.m.',
           Location: 'Bang Mueang Mai, Samut Prakarn ',
           Weather: '13° 7°',
+          Classes: [
+            "Battery",
+            "Battery", 
+            "Battery",
+            "Cosmetic",
+            "Face-mask",
+            "Face-mask",
+            "Foam-box",
+            "Metal-can",
+            "Paint-bucket",
+            "Plastic-bag",
+            "Plastic-bottle",
+            "Plastic-box",
+            "Rubber-gloves"
+          ]
         },
         //data 2
         {
@@ -166,15 +207,47 @@ export default {
     };
   },
   methods: {
-    nextData() {
-      this.currentDataIndex = (this.currentDataIndex + 1) % this.simulatedData.length;
-    },
-    prevData() {
-      this.currentDataIndex = (this.currentDataIndex - 1 + this.simulatedData.length) % this.simulatedData.length;
-    },
+    // nextData() {
+    //   this.currentDataIndex = (this.currentDataIndex + 1) % this.simulatedData.length;
+    // },
+    // prevData() {
+    //   this.currentDataIndex = (this.currentDataIndex - 1 + this.simulatedData.length) % this.simulatedData.length;
+    // },
     goToHistorical() {
       this.$router.push('/historical');
     },
+    countClass(className) {
+      return this.currentData.Classes.filter(item => item === className).length;
+    },
+    getFirstIndex(className) {
+      return this.currentData.Classes.findIndex(item => item === className);
+    },
+    formatClassName(className) {
+      const count = this.countClass(className);
+      if (count > 1) {
+        return `${className} x${count}`;
+      } else {
+        return className;
+      }
+    },
+    requestCameraStream() {
+      var xhr = new XMLHttpRequest();
+      
+      xhr.onload = function() {
+        if (xhr.status === 200) {
+          var imageData = xhr.responseText;
+          document.getElementById('camera-stream').src = 'data:image/jpeg;base64,' + imageData;
+          // เรียกเมทอดนี้อีกครั้งเพื่อร้องขอภาพใหม่
+          this.requestCameraStream();
+        } else {
+          console.log('Request failed. Status: ' + xhr.status);
+        }
+      }.bind(this);
+
+      var url = 'http://127.0.0.1:5000/video_feed';
+      xhr.open('GET', url, true);
+      xhr.send();
+    }
   },
   computed: {
     currentData() {
@@ -380,13 +453,13 @@ export default {
   color: white;
 }
 
-#router-link{
+#router-link {
   display: flex !important;
   align-items: center;
   white-space: nowrap;
   width: 30px;
   margin-right: 0.1px;
   color: #5a5959;
-  text-decoration:none
+  text-decoration: none
 }
 </style>
