@@ -1,6 +1,6 @@
 <template>
   <section>
-    <nav class="sb-topnav navbar navbar-expand navbar-dark">
+    <nav class="sb-topnav navbar navbar-expand navbar-dark sticky-top">
       <a class="navbar-brand ps-3" href="index.html">Remote Control Car Waste Detection</a>
       <form class="d-none d-md-inline-block form-inline ms-auto me-0 me-md-3 my-2 my-md-0">
       </form>
@@ -63,7 +63,28 @@
               </div>
             </div>
           </div>
-          <div class="row">
+          <div class="text-gray-700 flex flex-row flex-wrap items-center justify-center gap-1 break-all text-xs">
+            <span class="text-gray-700 font-semibold uppercase mt-2 mr-2">Class :</span>
+            <div class="data-class flex flex-wrap">
+              <div class="break-normal mt-2 flex flex-wrap">
+                <template v-for="(item, index) in currentData.Classes">
+                  <div v-if="index === getFirstIndex(item)" :key="index" class="flex items-center">
+                    <template v-if="countClass(item) > 1">
+                      <span
+                        class="transition-width relative flex h-6 select-none items-center justify-items-start overflow-hidden rounded-full border-2 text-xs shadow duration-200 ease-in-out w-16 px-2 bg-purple-50 border-purple-600 text-purple-600"
+                        style="margin-right: 5px;">{{ item }} x {{ countClass(item) }}</span>
+                    </template>
+                    <template v-else>
+                      <span
+                        class="transition-width relative flex h-6 select-none items-center justify-items-start overflow-hidden rounded-full border-2 text-xs shadow duration-200 ease-in-out w-16 px-2 bg-purple-50 border-purple-600 text-purple-600"
+                        :key="index" style="margin-right: 5px;">{{ item }}</span>
+                    </template>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </div>
+          <div class="row mt-4">
             <div class="col-xl-6">
               <div class="card mb-4">
                 <div class="card-header">
@@ -76,9 +97,10 @@
                       <div id="image-carousel-1" class="carousel slide" data-bs-ride="carousel">
                         <div class="carousel-inner">
                           <div class="carousel-item active">
-                            <!-- <img :src=currentData.Image_before_src :alt="currentData.Image_before_alt"
-                              class="d-block w-100" width="100%" height="320" /> -->
-                              <img id="camera-stream" src="http://127.0.0.1:5000/video_feed" alt="Camera Stream" class="d-block w-100" width="100%" height="320">
+                            <img :src=currentData.Image_before_src :alt="currentData.Image_before_alt"
+                              class="d-block w-100" width="100%" height="320" />
+                            <!-- <img id="camera-stream" src="http://127.0.0.1:5000/video_feed" alt="Camera Stream"
+                              class="d-block w-100" width="100%" height="320"> -->
                           </div>
                         </div>
                       </div>
@@ -111,34 +133,46 @@
                 </div>
               </div>
             </div>
-          </div>
-          <section>
-            <!-- <div class="button-container">
-            <v-btn v-on:click="prevData" class="btn btn-prev" id="btn-prev">Prevent</v-btn>
-            <v-btn v-on:click="nextData" class="btn btn-next" id="btn-next">Next</v-btn>
-          </div> -->
-            <div class="text-gray-700 flex flex-row flex-wrap items-center justify-center gap-1 break-all text-xs">
-              <span class="text-gray-700 text-[100px] font-semibold uppercase mt-2 mr-2">Class :</span>
-              <div class="data-class flex flex-wrap">
-                <div class="break-normal mt-2 flex">
-                  <template v-for="(item, index) in currentData.Classes">
-                    <div v-if="index === getFirstIndex(item)" :key="index" class="flex items-center">
-                      <template v-if="countClass(item) > 1">
-                        <span
-                          class="transition-width relative flex h-6 select-none items-center justify-items-start overflow-hidden rounded-full border-2 text-xs shadow duration-200 ease-in-out w-16 px-2 bg-purple-50 border-purple-600 text-purple-600"
-                          style="margin-right: 5px;">{{ item }} x {{ countClass(item) }}</span>
-                      </template>
-                      <template v-else>
-                        <span
-                          class="transition-width relative flex h-6 select-none items-center justify-items-start overflow-hidden rounded-full border-2 text-xs shadow duration-200 ease-in-out w-16 px-2 bg-purple-50 border-purple-600 text-purple-600"
-                          :key="index" style="margin-right: 5px;">{{ item }}</span>
-                      </template>
+          </div><hr>
+          <div>
+            <div class="container-bottom">
+              <section class="right-section mt-2">
+                <canvas id="gasChart" width="400" height="200"></canvas>
+              </section>
+              <section class="right-section mt-5">
+                <div v-for="(gas, index) in gas_data" :key="index" class="gas-data">
+                  <div class="gas-info-column">
+                    <div class="gas-info-row">
+                      <span :style="{ color: gasColor[index].lpg }" class="gas-info">LPG: {{ gas.lpg }} ppm,</span>
+                      <span :style="{ color: gasColor[index].smoke }" class="gas-info">SMOKE: {{ gas.smoke }}
+                        ppm,</span>
+                      <span :style="{ color: gasColor[index].ch4 }" class="gas-info">CH4: {{ gas.ch4 }} ppm,</span>
+                      <span :style="{ color: gasColor[index].co2 }" class="gas-info">CO2: {{ gas.co2 }} ppm</span>
                     </div>
-                  </template>
+                  </div>
+                  <div class="gas-info-column">
+                    <div class="gas-info-row">
+                      <span :style="{ color: gasColor[index].co }" class="gas-info">CO: {{ gas.co }} ppm,</span>
+                      <span :style="{ color: gasColor[index].h2 }" class="gas-info">H2: {{ gas.h2 }} ppm,</span>
+                      <span :style="{ color: gasColor[index].aceton }" class="gas-info">ACETON: {{ gas.aceton }}
+                        ppm,</span>
+                      <span :style="{ color: gasColor[index].nh4 }" class="gas-info">NH4: {{ gas.nh4 }} ppm</span>
+                    </div>
+                  </div>
+                  <div class="gas-info-column">
+                    <div class="gas-info-row">
+                      <span :style="{ color: gasColor[index].propane }" class="gas-info">PROPANE: {{ gas.propane }}
+                        ppm,</span>
+                      <span :style="{ color: gasColor[index].alcohol }" class="gas-info">ALCOHOL: {{ gas.alcohol }}
+                        ppm,</span>
+                      <span :style="{ color: gasColor[index].tolueno }" class="gas-info">TOLUENO: {{ gas.tolueno }}
+                        ppm</span>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-          </section>
+              </section>
+            </div><hr>
+          </div>
         </div>
       </main>
     </div>
@@ -147,12 +181,17 @@
     </div>
   </section>
 </template>
-<!-- class="card-show-content" -->
+
 <script>
+import Chart from 'chart.js/auto';
 export default {
   name: 'App',
+  // mounted() {
+  //   this.requestCameraStream();
+  // },
   mounted() {
-    this.requestCameraStream();
+    this.createGasChart();
+    setInterval(this.updateGasChart, 1000); // อัปเดตทุกๆ 1 วินาที
   },
   data() {
     return {
@@ -168,7 +207,7 @@ export default {
           Weather: '13° 7°',
           Classes: [
             "Battery",
-            "Battery", 
+            "Battery",
             "Battery",
             "Cosmetic",
             "Face-mask",
@@ -176,10 +215,7 @@ export default {
             "Foam-box",
             "Metal-can",
             "Paint-bucket",
-            "Plastic-bag",
-            "Plastic-bottle",
-            "Plastic-box",
-            "Rubber-gloves"
+            "Plastic-bag", "Plastic-bottle", "Plastic-box", "Rubber-gloves"
           ]
         },
         //data 2
@@ -204,6 +240,20 @@ export default {
         },
       ],
       currentDataIndex: 0,
+      gas_data: [{
+        lpg: 12.96008,
+        smoke: 18.711,
+        ch4: 11.8547,
+        co2: 5.658,
+        co: 12.336,
+        h2: 9.2241,
+        aceton: 4.5612,
+        nh4: 7.5246,
+        propane: 8.2564,
+        alcohol: 16.2145,
+        tolueno: 7.2569
+      }],
+      gasChart: null
     };
   },
   methods: {
@@ -230,29 +280,67 @@ export default {
         return className;
       }
     },
-    requestCameraStream() {
-      var xhr = new XMLHttpRequest();
-      
-      xhr.onload = function() {
-        if (xhr.status === 200) {
-          var imageData = xhr.responseText;
-          document.getElementById('camera-stream').src = 'data:image/jpeg;base64,' + imageData;
-          // เรียกเมทอดนี้อีกครั้งเพื่อร้องขอภาพใหม่
-          this.requestCameraStream();
-        } else {
-          console.log('Request failed. Status: ' + xhr.status);
-        }
-      }.bind(this);
+    // requestCameraStream() {
+    //   var xhr = new XMLHttpRequest();
 
-      var url = 'http://127.0.0.1:5000/video_feed';
-      xhr.open('GET', url, true);
-      xhr.send();
+    //   xhr.onload = function () {
+    //     if (xhr.status === 200) {
+    //       var imageData = xhr.responseText;
+    //       document.getElementById('camera-stream').src = 'data:image/jpeg;base64,' + imageData;
+    //       // เรียกเมทอดนี้อีกครั้งเพื่อร้องขอภาพใหม่
+    //       this.requestCameraStream();
+    //     } else {
+    //       console.log('Request failed. Status: ' + xhr.status);
+    //     }
+    //   }.bind(this);
+
+    //   var url = 'http://127.0.0.1:5000/video_feed';
+    //   xhr.open('GET', url, true);
+    //   xhr.send();
+    // }
+    createGasChart() {
+      const ctx = document.getElementById('gasChart').getContext('2d');
+      this.gasChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: ['LPG', 'Smoke', 'CH4', 'CO2', 'CO', 'H2', 'ACETON', 'NH4', 'PROPANE', 'ALCOHOL', 'TOLUENO'],
+          datasets: [{
+            label: 'Gas Sensors',
+            data: [this.gas_data[0].lpg, this.gas_data[0].smoke, this.gas_data[0].ch4, this.gas_data[0].co2, this.gas_data[0].co, this.gas_data[0].h2, this.gas_data[0].aceton, this.gas_data[0].nh4, this.gas_data[0].propane, this.gas_data[0].alcohol, this.gas_data[0].tolueno],
+            backgroundColor: 'rgba(157, 178, 212, 0.8)',
+            borderColor: 'rgba(228, 233, 241, 0.8)',
+            borderWidth: 1
+          }]
+        },
+        options: {
+          scales: {
+            y: {
+              beginAtZero: true
+            }
+          }
+        }
+      });
     }
   },
   computed: {
     currentData() {
       return this.simulatedData[this.currentDataIndex];
     },
+    gasColor() {
+      return this.gas_data.map(gas => ({
+        lpg: gas.lpg > 10 ? 'red' : 'inherit',
+        smoke: gas.smoke > 10 ? 'red' : 'inherit',
+        ch4: gas.ch4 > 10 ? 'red' : 'inherit',
+        co2: gas.co2 > 10 ? 'red' : 'inherit',
+        co: gas.co > 10 ? 'red' : 'inherit',
+        h2: gas.h2 > 10 ? 'red' : 'inherit',
+        aceton: gas.aceton > 10 ? 'red' : 'inherit',
+        nh4: gas.nh4 > 10 ? 'red' : 'inherit',
+        propane: gas.propane > 10 ? 'red' : 'inherit',
+        alcohol: gas.alcohol > 10 ? 'red' : 'inherit',
+        tolueno: gas.tolueno > 10 ? 'red' : 'inherit'
+      }));
+    }
   },
 };
 </script>
@@ -461,5 +549,90 @@ export default {
   margin-right: 0.1px;
   color: #5a5959;
   text-decoration: none
+}
+
+.container-bottom {
+  display: flex;
+}
+
+.left-section {
+  flex: 1;
+}
+
+.right-section {
+  margin-left: 20px;
+  flex: 1;
+  justify-content: center;
+}
+
+.gas-data {
+  display: grid;
+  gap: 10px;
+}
+
+.gas-info-row {
+  font-size: 13px;
+  padding: 5px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.gas-info {
+  margin: 0 5px;
+}
+
+/* For screens larger than 768px */
+@media (min-width: 768px) {
+  .container-bottom {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+
+  .left-section {
+    flex: 1;
+    margin-right: 10px;
+    /* Adjust margin as needed */
+  }
+
+  .right-section {
+    flex: 1;
+    margin-left: 10px;
+    /* Adjust margin as needed */
+  }
+}
+
+.left-section {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.data-class {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.data-class>div {
+  margin-right: 5px;
+  margin-bottom: 5px;
+}
+
+/* For screens smaller than 768px */
+@media (max-width: 767px) {
+  .container-bottom {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .left-section,
+  .right-section {
+    width: 100%;
+    margin: 0;
+    /* Reset margin */
+  }
 }
 </style>
