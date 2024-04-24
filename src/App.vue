@@ -97,10 +97,10 @@
                       <div id="image-carousel-1" class="carousel slide" data-bs-ride="carousel">
                         <div class="carousel-inner">
                           <div class="carousel-item active">
-                            <img :src=currentData.Image_before_src :alt="currentData.Image_before_alt"
-                              class="d-block w-100" width="100%" height="320" />
-                            <!-- <img id="camera-stream" src="http://127.0.0.1:5000/video_feed" alt="Camera Stream"
-                              class="d-block w-100" width="100%" height="320"> -->
+                            <!-- <img :src=currentData.Image_before_src :alt="currentData.Image_before_alt"
+                              class="d-block w-100" width="100%" height="320" /> -->
+                            <img id="camera-stream" src="http://172.20.10.3:5000/video_feed_original" alt="Camera Stream"
+                              class="d-block w-100" width="100%" height="320">
                           </div>
                         </div>
                       </div>
@@ -122,8 +122,10 @@
                         <div id="image-carousel-2" class="carousel slide" data-bs-ride="carousel">
                           <div class="carousel-inner">
                             <div class="carousel-item active">
-                              <img :src="currentData.Image_predict_src" :alt="currentData.Image_predict_alt"
-                                class="d-block w-100" width="100%" height="320" />
+                              <!-- <img :src="currentData.Image_predict_src" :alt="currentData.Image_predict_alt"
+                                class="d-block w-100" width="100%" height="320" /> -->
+                                <img id="camera-stream" src="http://172.20.10.3:5000/video_feed_predicted" alt="Camera Stream"
+                              class="d-block w-100" width="100%" height="320">
                             </div>
                           </div>
                         </div>
@@ -184,6 +186,7 @@
 
 <script>
 import Chart from 'chart.js/auto';
+import Paho from 'paho-mqtt';
 export default {
   name: 'App',
   // mounted() {
@@ -191,6 +194,7 @@ export default {
   // },
   mounted() {
     this.createGasChart();
+    this.initMqtt();
     setInterval(this.updateGasChart, 1000); // อัปเดตทุกๆ 1 วินาที
   },
   data() {
@@ -280,6 +284,37 @@ export default {
         return className;
       }
     },
+    initMqtt() {
+      const brokerUrl = 'broker.emqx.io';
+      const port = 8083;
+      const clientId = `mqtt_${Math.random().toString(16).substr(2, 8)}`;
+      const topic = 'WasteDetectionOnRaspberryPi';
+
+      const client = new Paho.Client(brokerUrl, Number(port), clientId);
+
+      // Connection callbacks
+      client.onConnectionLost = onConnectionLost;
+      client.onMessageArrived = onMessageArrived;
+
+      client.connect({ onSuccess: onConnect }); // Connect with success callback
+      function onConnect() {
+        console.log('Connected to MQTT broker');
+        // Subscribe to the topic after successful connection
+        client.subscribe(topic, { onSuccess: onSubscribe });
+      }
+      function onSubscribe() {
+        console.log('Subscribed to topic:', topic);
+      }
+      function onMessageArrived(message) {
+        console.log('onMessageArrived:', message.payloadString);
+      }
+      function onConnectionLost(responseObject) {
+        if (responseObject.errorCode !== 0) {
+          console.error('Connection lost:', responseObject.errorMessage);
+        }
+      }
+    },
+
     // requestCameraStream() {
     //   var xhr = new XMLHttpRequest();
 
