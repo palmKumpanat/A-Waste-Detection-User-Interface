@@ -186,7 +186,8 @@
 
 <script>
 import Chart from 'chart.js/auto';
-import Paho from 'paho-mqtt';
+import mqtt from './utils/mqtt/subscribe.js'
+import calculatePPM from './utils/mqsensor/calculate.js'
 export default {
   name: 'App',
   // mounted() {
@@ -194,7 +195,8 @@ export default {
   // },
   mounted() {
     this.createGasChart();
-    this.initMqtt();
+    mqtt.initMqtt();
+    setInterval(this.getMessage, 1000);
     setInterval(this.updateGasChart, 1000); // อัปเดตทุกๆ 1 วินาที
   },
   data() {
@@ -209,18 +211,7 @@ export default {
           Time: '12:00 p.m.',
           Location: 'Bang Mueang Mai, Samut Prakarn ',
           Weather: '13° 7°',
-          Classes: [
-            "Battery",
-            "Battery",
-            "Battery",
-            "Cosmetic",
-            "Face-mask",
-            "Face-mask",
-            "Foam-box",
-            "Metal-can",
-            "Paint-bucket",
-            "Plastic-bag", "Plastic-bottle", "Plastic-box", "Rubber-gloves"
-          ]
+          Classes: []
         },
         //data 2
         {
@@ -245,17 +236,17 @@ export default {
       ],
       currentDataIndex: 0,
       gas_data: [{
-        lpg: 12.96008,
-        smoke: 18.711,
-        ch4: 11.8547,
-        co2: 5.658,
-        co: 12.336,
-        h2: 9.2241,
-        aceton: 4.5612,
-        nh4: 7.5246,
-        propane: 8.2564,
-        alcohol: 16.2145,
-        tolueno: 7.2569
+        lpg:      0.0,
+        smoke:    0.0,
+        ch4:      0.0,
+        co2:      0.0,
+        co:       0.0,
+        h2:       0.0,
+        aceton:   0.0,
+        nh4:      0.0,
+        propane:  0.0,
+        alcohol:  0.0,
+        tolueno:  0.0
       }],
       gasChart: null
     };
@@ -284,55 +275,30 @@ export default {
         return className;
       }
     },
-    initMqtt() {
-      const brokerUrl = 'broker.emqx.io';
-      const port = 8083;
-      const clientId = `mqtt_${Math.random().toString(16).substr(2, 8)}`;
-      const topic = 'WasteDetectionOnRaspberryPi';
+    getMessage(){
+      var message = mqtt.getMessage();
+      if(message){{
+        var results = JSON.parse(message);
+        //console.log(results.mq_data)
+        this.getClassesPredicted(results.class_predicted);
+        var value = calculatePPM(results.mq_data);
+        this.gas_data[0].lpg = value.LPG;
+        this.gas_data[0].smoke = value.Smoke;
+        this.gas_data[0].ch4 = value.CH4;
+        this.gas_data[0].co2 = value.CO2;
+        this.gas_data[0].co = value.CO;
+        this.gas_data[0].h2 = value.H2;
+        this.gas_data[0].aceton = value.ACETON;
+        this.gas_data[0].nh4 = value.NH4;
+        this.gas_data[0].propane = value.Propane;
+        this.gas_data[0].alcohol = value.Alcohol;
+        this.gas_data[0].tolueno = value.TOLUENO;
 
-      const client = new Paho.Client(brokerUrl, Number(port), clientId);
-
-      // Connection callbacks
-      client.onConnectionLost = onConnectionLost;
-      client.onMessageArrived = onMessageArrived;
-
-      client.connect({ onSuccess: onConnect }); // Connect with success callback
-      function onConnect() {
-        console.log('Connected to MQTT broker');
-        // Subscribe to the topic after successful connection
-        client.subscribe(topic, { onSuccess: onSubscribe });
-      }
-      function onSubscribe() {
-        console.log('Subscribed to topic:', topic);
-      }
-      function onMessageArrived(message) {
-        console.log('onMessageArrived:', message.payloadString);
-      }
-      function onConnectionLost(responseObject) {
-        if (responseObject.errorCode !== 0) {
-          console.error('Connection lost:', responseObject.errorMessage);
-        }
-      }
+      }}
     },
-
-    // requestCameraStream() {
-    //   var xhr = new XMLHttpRequest();
-
-    //   xhr.onload = function () {
-    //     if (xhr.status === 200) {
-    //       var imageData = xhr.responseText;
-    //       document.getElementById('camera-stream').src = 'data:image/jpeg;base64,' + imageData;
-    //       // เรียกเมทอดนี้อีกครั้งเพื่อร้องขอภาพใหม่
-    //       this.requestCameraStream();
-    //     } else {
-    //       console.log('Request failed. Status: ' + xhr.status);
-    //     }
-    //   }.bind(this);
-
-    //   var url = 'http://127.0.0.1:5000/video_feed';
-    //   xhr.open('GET', url, true);
-    //   xhr.send();
-    // }
+    getClassesPredicted(class_predicted){
+      this.currentData.Classes = class_predicted;
+    },
     createGasChart() {
       const ctx = document.getElementById('gasChart').getContext('2d');
       this.gasChart = new Chart(ctx, {
