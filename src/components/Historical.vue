@@ -94,42 +94,47 @@
                   <img class="modal-img" :src="selectedItem.image">
                 </div>
                 <div class="col-2">
-                  <div class="border-transparent group-hover:border-purboflow-400 group-hover:border-opacity-30 group-hover:bg-purboflow-500 group-hover:bg-opacity-10 flex flex-row justify-start gap-2  rounded-md border  border-transparent  p-2 transition duration-200 hover:shadow-md">
-                  <div class="flex flex-col justify-between">
-                    <div class="text-gray-600 flex h-6 flex-row items-center gap-1 break-all text-xs font-normal font-size mt-3">
-                      <span class="text-gray-700 text-[100px] font-semibold uppercase font-size">Location :</span>
-                      {{ selectedItem.location }}
-                    </div>
-                    <div
-                      class="text-gray-600 relative flex h-6 flex-row items-center gap-1 break-all text-xs font-normal font-size mt-5">
-                      <span class="text-gray-700 relative text-[10px] font-semibold uppercase font-size">Weather :</span>{{
-                        selectedItem.weather }}
-                    </div>
-                    <div
-                      class="text-gray-600 relative flex h-6 flex-row items-center gap-1 break-all text-xs font-normal font-size mt-5">
-                      <span class="text-gray-700 relative text-[10px] font-semibold uppercase font-size">Time :</span>
-                      <div class="tagWrapper relative h-6 w-auto">
-                        <div
-                          class="hover:bg-white peer flex h-6 w-auto flex-row items-center rounded px-1 transition-all duration-200 ease-in-out hover:shadow-md">
-                          <span class=""> {{ selectedItem.time }} </span>
+                  <div
+                    class="border-transparent group-hover:border-purboflow-400 group-hover:border-opacity-30 group-hover:bg-purboflow-500 group-hover:bg-opacity-10 flex flex-row justify-start gap-2  rounded-md border  border-transparent  p-2 transition duration-200 hover:shadow-md">
+                    <div class="flex flex-col justify-between">
+                      <div
+                        class="text-gray-600 flex h-6 flex-row items-center gap-1 break-all text-xs font-normal font-size mt-3">
+                        <span class="text-gray-700 text-[100px] font-semibold uppercase font-size">Location :</span>
+                        {{ selectedItem.location }}
+                      </div>
+                      <div
+                        class="text-gray-600 relative flex h-6 flex-row items-center gap-1 break-all text-xs font-normal font-size mt-5">
+                        <span class="text-gray-700 relative text-[10px] font-semibold uppercase font-size">Weather
+                          :</span>{{
+                            selectedItem.weather }}
+                      </div>
+                      <div
+                        class="text-gray-600 relative flex h-6 flex-row items-center gap-1 break-all text-xs font-normal font-size mt-5">
+                        <span class="text-gray-700 relative text-[10px] font-semibold uppercase font-size">Time :</span>
+                        <div class="tagWrapper relative h-6 w-auto">
+                          <div
+                            class="hover:bg-white peer flex h-6 w-auto flex-row items-center rounded px-1 transition-all duration-200 ease-in-out hover:shadow-md">
+                            <span class=""> {{ selectedItem.time }} </span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    <div class="text-gray-700 flex flex-row flex-wrap items-center gap-1 break-all text-xs">
+                      <div class="text-gray-700 flex flex-row flex-wrap items-center gap-1 break-all text-xs">
                         <span class="text-gray-700 text-[10px] font-semibold uppercase font-size mt-5">Class :</span>
                         <div class="break-normal mt-5" v-for="(itemClass, index) in selectedItem.class" :key="index">
                           <div v-if="index < 3 || selectedItem.class <= 3"
                             class="transition-width relative flex h-6 select-none items-center justify-items-start overflow-hidden rounded-full border-2 text-xs shadow duration-200 ease-in-out w-16 px-2 bg-purple-50 border-purple-600 text-purple-600">
-                            <span class="animate-fade font-bold transition-opacity opacity-100 font-size">{{ itemClass }}</span>
+                            <span class="animate-fade font-bold transition-opacity opacity-100 font-size">{{ itemClass
+                              }}</span>
                           </div>
                           <div v-else
                             class="transition-width relative flex h-6 select-none items-center justify-items-start overflow-hidden rounded-full border-2 text-xs shadow duration-200 ease-in-out w-16 px-2 bg-purple-50 border-purple-600 text-purple-600 mt-1">
-                            <span class="animate-fade font-bold transition-opacity opacity-100 font-size ">{{ itemClass }}</span>
+                            <span class="animate-fade font-bold transition-opacity opacity-100 font-size ">{{ itemClass
+                              }}</span>
                           </div>
                         </div>
                       </div>
+                    </div>
                   </div>
-                </div>  
                 </div>
               </div>
             </div>
@@ -141,39 +146,55 @@
 </template>
 
 <script>
+import { collection, getDocs } from 'firebase/firestore'
+import { db } from '@/firebase'
+
 export default {
   name: 'HistoricalData',
   data() {
     return {
       selectedClasses: [],
-      filteredData: [], 
+      filteredData: [],
       items: [
-        { id: 1, image: require('../assets/image-predict/image_predict_1.png'), location: "Bang Mueang Mai, Samut Prakarn", weather: "13° 7°", time: "12:00 p.m.", class: ["Battery", "Cosmetic", "Face-mask", "Foam-box", "Metal-can", "Paint-bucket", "Plastic-bag", "Plastic-bottle", "Plastic-box", "Rubber-gloves"] },
-        { id: 2, image: require('../assets/image-predict/image_predict_2.png'), location: "Chalong Krung 1, Lat Krabang", weather: "19° 11°", time: "14:00 p.m.", class: ["Plastic-box"] },
-        { id: 3, image: require('../assets/image-predict/image_predict_3.png'), location: "Bang Mot, Krung Thep Maha Nakhon", weather: "14° 11°", time: "15:35 p.m.", class: ["Foam-box"] },
+        // { id: 1, image: require('../assets/image-predict/image_predict_1.png'), location: "Bang Mueang Mai, Samut Prakarn", weather: "13° 7°", time: "12:00 p.m.", class: ["Battery", "Cosmetic", "Face-mask", "Foam-box", "Metal-can", "Paint-bucket", "Plastic-bag", "Plastic-bottle", "Plastic-box", "Rubber-gloves"] },
+        // { id: 2, image: require('../assets/image-predict/image_predict_2.png'), location: "Chalong Krung 1, Lat Krabang", weather: "19° 11°", time: "14:00 p.m.", class: ["Plastic-box"] },
+        // { id: 3, image: require('../assets/image-predict/image_predict_3.png'), location: "Bang Mot, Krung Thep Maha Nakhon", weather: "14° 11°", time: "15:35 p.m.", class: ["Foam-box"] },
       ],
       classes: ["Battery", "Cosmetic", "Face-mask", "Foam-box", "Metal-can", "Paint-bucket", "Plastic-bag", "Plastic-bottle", "Plastic-box", "Rubber-gloves"],
-      isModalOpen: false, 
-      selectedItem: null 
+      isModalOpen: false,
+      selectedItem: null
     }
   },
   methods: {
+    async fetchData() {
+      try {
+        const querySnapshot = await getDocs(collection(db, "waste"));
+        const fetchedData = [];
+        querySnapshot.forEach((doc) => {
+          fetchedData.push(doc.data());
+        });
+        this.items = fetchedData;
+        this.filteredData = this.items;
+      } catch (error) {
+        console.log("Error fetching data");
+      }
+    },
     filterData() {
       if (this.selectedClasses.length > 0) {
         this.filteredData = this.items.filter(item => {
           return item.class.some(className => this.selectedClasses.includes(className));
         });
       } else {
-        this.filteredData = this.items; 
+        this.filteredData = this.items;
       }
     },
     openModal(itemId) {
-      this.selectedItem = itemId; 
-      this.isModalOpen = true; 
+      this.selectedItem = itemId;
+      this.isModalOpen = true;
     },
     closeModal() {
-      this.isModalOpen = false; 
-      this.selectedItem = null; 
+      this.isModalOpen = false;
+      this.selectedItem = null;
     }
   },
   watch: {
@@ -181,8 +202,8 @@ export default {
       this.filterData();
     }
   },
-  created() { 
-    this.filteredData = this.items;
+  created() {
+    this.fetchData();
   },
 }
 </script>
@@ -2170,12 +2191,12 @@ html {
 .modal-content {
   background-color: #fefefe;
   margin: 15% auto;
-  padding: 20px;  
+  padding: 20px;
   border: 1px solid #888;
   width: 70%;
-  display: flex; 
-  justify-content: center; 
-  align-items: center; 
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .close {
@@ -2199,10 +2220,14 @@ html {
 }
 
 .container {
-  display: flex; /* เริ่มใช้ Flexbox */
-  justify-content: space-between; /* จัดเรียงรูปภาพและข้อมูลให้อยู่ตรงข้ามกัน */
-  align-items: center; /* จัดเรียงรูปภาพและข้อมูลให้อยู่กึ่งกลางตามแนวตั้ง */
-  width: 100%; /* ให้คอนเทนเนอร์เต็มขนาด */
+  display: flex;
+  /* เริ่มใช้ Flexbox */
+  justify-content: space-between;
+  /* จัดเรียงรูปภาพและข้อมูลให้อยู่ตรงข้ามกัน */
+  align-items: center;
+  /* จัดเรียงรูปภาพและข้อมูลให้อยู่กึ่งกลางตามแนวตั้ง */
+  width: 100%;
+  /* ให้คอนเทนเนอร์เต็มขนาด */
 }
 
 .col-2 {
@@ -2210,8 +2235,8 @@ html {
 }
 
 .modal-img {
-  max-width: 100%; 
-  height:auto; 
+  max-width: 100%;
+  height: auto;
 }
 
 .font-size {
