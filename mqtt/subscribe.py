@@ -4,7 +4,7 @@ import numpy as np
 #from line_notify import LineNotify
 
 mqttBroker = "broker.emqx.io"
-port = 1883
+port = 8083
 keepAlive = 60
 
 def Notify():
