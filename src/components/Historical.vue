@@ -148,6 +148,7 @@
 <script>
 import { collection, getDocs } from 'firebase/firestore'
 import { db } from '@/firebase'
+// import {storage} from '@/firebase'
 
 export default {
   name: 'HistoricalData',
@@ -155,22 +156,39 @@ export default {
     return {
       selectedClasses: [],
       filteredData: [],
-      items: [
-        // { id: 1, image: require('../assets/image-predict/image_predict_1.png'), location: "Bang Mueang Mai, Samut Prakarn", weather: "13° 7°", time: "12:00 p.m.", class: ["Battery", "Cosmetic", "Face-mask", "Foam-box", "Metal-can", "Paint-bucket", "Plastic-bag", "Plastic-bottle", "Plastic-box", "Rubber-gloves"] },
-        // { id: 2, image: require('../assets/image-predict/image_predict_2.png'), location: "Chalong Krung 1, Lat Krabang", weather: "19° 11°", time: "14:00 p.m.", class: ["Plastic-box"] },
-        // { id: 3, image: require('../assets/image-predict/image_predict_3.png'), location: "Bang Mot, Krung Thep Maha Nakhon", weather: "14° 11°", time: "15:35 p.m.", class: ["Foam-box"] },
-      ],
+      items: [],
       classes: ["Battery", "Cosmetic", "Face-mask", "Foam-box", "Metal-can", "Paint-bucket", "Plastic-bag", "Plastic-bottle", "Plastic-box", "Rubber-gloves"],
       isModalOpen: false,
       selectedItem: null
     }
   },
   methods: {
+    // async fetchImageUrl(imageName) {
+    //   try {
+    //     const imageRef = storage.ref().child(imageName);
+    //     const url = await imageRef.getDownloadURL();
+    //     return url;
+    //   } catch (error) {
+    //     console.log("Error fetching image URL: ", error);
+    //     return null;
+    //   }
+    // },
+    // async getStorageRefForDocument(docId) {
+    //   return storage.ref().child(`historical-images/${docId}/image.png`);
+    // },
     async fetchData() {
       try {
         const querySnapshot = await getDocs(collection(db, "waste"));
         const fetchedData = [];
+        // for (const doc of querySnapshot.docs) {
+        //   const data = doc.data();
+        //   const imageRef = await this.getStorageRefForDocument(doc.id);
+        //   const url = await imageRef.getDownloadURL();
+        //   data.imageUrl = url;
+        //   fetchedData.push(data);
+        // }
         querySnapshot.forEach((doc) => {
+          // data.imageUrl = await this.fetchImageUrl(data.imageFileName);
           fetchedData.push(doc.data());
         });
         this.items = fetchedData;
