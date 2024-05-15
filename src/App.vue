@@ -49,7 +49,7 @@
           <div class="row">
             <div class="col-xl-4 col-md-6">
               <div class="card text-white mb-4">
-                <div class="card-body">Time : {{ currentData.Time }} </div>
+                <div class="card-body">Time : {{ currentData.currentTime }} </div>
               </div>
             </div>
             <div class="col-xl-4 col-md-6">
@@ -99,8 +99,10 @@
                           <div class="carousel-item active">
                             <!-- <img :src=currentData.Image_before_src :alt="currentData.Image_before_alt"
                               class="d-block w-100" width="100%" height="320" /> -->
-                            <img id="camera-stream" src="http://172.20.10.3:5000/video_feed_original" alt="Camera Stream"
-                              class="d-block w-100" width="100%" height="320">
+                            <!-- <img id="camera-stream" src="http://172.20.10.3:5000/video_feed_original" alt="Camera Stream" -->
+                            <!--   class="d-block w-100" width="100%" height="320"> -->
+                            <img id="camera-stream" src="http://192.168.1.44:5000/video_feed_original"
+                              alt="Camera Stream" class="d-block w-100" width="100%" height="320">
                           </div>
                         </div>
                       </div>
@@ -124,8 +126,10 @@
                             <div class="carousel-item active">
                               <!-- <img :src="currentData.Image_predict_src" :alt="currentData.Image_predict_alt"
                                 class="d-block w-100" width="100%" height="320" /> -->
-                                <img id="camera-stream" src="http://172.20.10.3:5000/video_feed_predicted" alt="Camera Stream"
-                              class="d-block w-100" width="100%" height="320">
+                              <!-- <img id="camera-stream" src="http://172.20.10.3:5000/video_feed_predicted" -->
+                              <!--   alt="Camera Stream" class="d-block w-100" width="100%" height="320"> -->
+                              <img id="camera-stream" src="http://192.168.1.44:5000/video_feed_predicted"
+                                alt="Camera Stream" class="d-block w-100" width="100%" height="320">
                             </div>
                           </div>
                         </div>
@@ -135,7 +139,8 @@
                 </div>
               </div>
             </div>
-          </div><hr>
+          </div>
+          <hr>
           <div>
             <div class="container-bottom">
               <section class="right-section mt-2">
@@ -173,7 +178,8 @@
                   </div>
                 </div>
               </section>
-            </div><hr>
+            </div>
+            <hr>
           </div>
         </div>
       </main>
@@ -188,16 +194,20 @@
 import Chart from 'chart.js/auto';
 import mqtt from './utils/mqtt/subscribe.js'
 import calculatePPM from './utils/mqsensor/calculate.js'
+import { collection, addDoc } from 'firebase/firestore'
+import { db } from '@/firebase'
 export default {
   name: 'App',
   // mounted() {
   //   this.requestCameraStream();
   // },
   mounted() {
+    this.getTime();
     this.createGasChart();
     mqtt.initMqtt();
     setInterval(this.getMessage, 1000);
     setInterval(this.updateGasChart, 1000); // อัปเดตทุกๆ 1 วินาที
+    setInterval(this.createData, 1000);
   },
   data() {
     return {
@@ -211,7 +221,7 @@ export default {
           Time: '12:00 p.m.',
           Location: 'Bang Mueang Mai, Samut Prakarn ',
           Weather: '13° 7°',
-          Classes: []
+          Classes: ['Battery', 'Foam-box']
         },
         //data 2
         {
@@ -223,7 +233,7 @@ export default {
           Location: 'Chalong Krung 1, Lat Krabang',
           Weather: '19° 11°',
         },
-        //data 3 
+        //data 3
         {
           Image_before_src: require('./assets/image-3.png'),
           Image_before_alt: 'Image_before_prediction',
@@ -235,18 +245,19 @@ export default {
         },
       ],
       currentDataIndex: 0,
+      currentTime: '',
       gas_data: [{
-        lpg:      0.0,
-        smoke:    0.0,
-        ch4:      0.0,
-        co2:      0.0,
-        co:       0.0,
-        h2:       0.0,
-        aceton:   0.0,
-        nh4:      0.0,
-        propane:  0.0,
-        alcohol:  0.0,
-        tolueno:  0.0
+        lpg: 0.0,
+        smoke: 0.0,
+        ch4: 0.0,
+        co2: 0.0,
+        co: 0.0,
+        h2: 0.0,
+        aceton: 0.0,
+        nh4: 0.0,
+        propane: 0.0,
+        alcohol: 0.0,
+        tolueno: 0.0
       }],
       gasChart: null
     };
@@ -269,35 +280,57 @@ export default {
     },
     formatClassName(className) {
       const count = this.countClass(className);
-      if (count > 1) {
-        return `${className} x${count}`;
+      if (count > 0) {
+        return this.currentData.Classes.slice();
       } else {
         return className;
       }
     },
-    getMessage(){
-      var message = mqtt.getMessage();
-      if(message){{
-        var results = JSON.parse(message);
-        //console.log(results.mq_data)
-        this.getClassesPredicted(results.class_predicted);
-        var value = calculatePPM(results.mq_data);
-        this.gas_data[0].lpg = value.LPG;
-        this.gas_data[0].smoke = value.Smoke;
-        this.gas_data[0].ch4 = value.CH4;
-        this.gas_data[0].co2 = value.CO2;
-        this.gas_data[0].co = value.CO;
-        this.gas_data[0].h2 = value.H2;
-        this.gas_data[0].aceton = value.ACETON;
-        this.gas_data[0].nh4 = value.NH4;
-        this.gas_data[0].propane = value.Propane;
-        this.gas_data[0].alcohol = value.Alcohol;
-        this.gas_data[0].tolueno = value.TOLUENO;
+    async createData(className) {
+      try {
+        const classCount = this.currentData.Classes.length;
+        // console.log('Class count:', classCount)
+        // console.log('Classes:', classes);
 
-      }}
+        if (classCount > 0) {
+          await addDoc(collection(db, "waste"), {
+            class: this.formatClassName(className),
+            image: "https://firebasestorage.googleapis.com/v0/b/waste-detection-61420.appspot.com/o/historical-images%2FV0o8ecEvsazqgekZGdjz%2Fimage.png?alt=media&token=8a65fb20-899d-4962-93fe-928eb8a13ed2",
+            locaiton: "test location 3",
+            time: this.currentData.currentTime,
+            weather: "18° 11°",
+          });
+        }
+      } catch (error) {
+        console.log("Error create data", error.message);
+      }
     },
-    getClassesPredicted(class_predicted){
+    getMessage() {
+      var message = mqtt.getMessage();
+      if (message) {
+        {
+          var results = JSON.parse(message);
+          // console.log(results.mq_data)
+          this.getClassesPredicted(results.class_predicted);
+          var value = calculatePPM(results.mq_data);
+          this.gas_data[0].lpg = value.LPG;
+          this.gas_data[0].smoke = value.Smoke;
+          this.gas_data[0].ch4 = value.CH4;
+          this.gas_data[0].co2 = value.CO2;
+          this.gas_data[0].co = value.CO;
+          this.gas_data[0].h2 = value.H2;
+          this.gas_data[0].aceton = value.ACETON;
+          this.gas_data[0].nh4 = value.NH4;
+          this.gas_data[0].propane = value.Propane;
+          this.gas_data[0].alcohol = value.Alcohol;
+          this.gas_data[0].tolueno = value.TOLUENO;
+        }
+      }
+    },
+    getClassesPredicted(class_predicted) {
+      // console.log('Class predictions received: ', class_predicted);
       this.currentData.Classes = class_predicted;
+      // console.log('Updated currentData.Classes: ', this.currentData.Classes);
     },
     createGasChart() {
       const ctx = document.getElementById('gasChart').getContext('2d');
@@ -321,7 +354,15 @@ export default {
           }
         }
       });
-    }
+    },
+    getTime() {
+      const date = new Date();
+      const hours = date.getHours().toString().padStart(2, '0');
+      const minutes = date.getMinutes().toString().padStart(2, '0');
+      const ampm = hours >= 12 ? 'PM' : 'AM';
+      const formattedTime = `${hours}:${minutes} ${ampm}`;
+      this.currentData.currentTime = formattedTime;
+    },
   },
   computed: {
     currentData() {
@@ -341,7 +382,7 @@ export default {
         alcohol: gas.alcohol > 10 ? 'red' : 'inherit',
         tolueno: gas.tolueno > 10 ? 'red' : 'inherit'
       }));
-    }
+    },
   },
 };
 </script>

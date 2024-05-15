@@ -146,7 +146,7 @@
 </template>
 
 <script>
-import { collection, getDocs, addDoc } from 'firebase/firestore'
+import { collection, getDocs } from 'firebase/firestore'
 import { db } from '@/firebase'
 // import {storage} from '@/firebase'
 
@@ -163,20 +163,6 @@ export default {
     }
   },
   methods: {
-    async createData() {
-      try {
-        await addDoc(collection(db, "waste"), {
-          id: 3,
-          class: ['Paint-bucket', 'Metal-can'],
-          image: "https://firebasestorage.googleapis.com/v0/b/waste-detection-61420.appspot.com/o/historical-images%2FV0o8ecEvsazqgekZGdjz%2Fimage.png?alt=media&token=8a65fb20-899d-4962-93fe-928eb8a13ed2",
-          locaiton: "test locaiton 3",
-          time: "10:21 AM",
-          weather: "18° 11°",
-        });
-      } catch (error) {
-        console.log("Error create data", error.message);
-      }
-    },
     async fetchData() {
       try {
         const querySnapshot = await getDocs(collection(db, "waste"));
