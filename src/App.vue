@@ -196,13 +196,14 @@ import mqtt from './utils/mqtt/subscribe.js'
 import calculatePPM from './utils/mqsensor/calculate.js'
 import { collection, addDoc } from 'firebase/firestore'
 import { db } from '@/firebase'
+import axios from 'axios'
 export default {
   name: 'App',
   // mounted() {
   //   this.requestCameraStream();
   // },
   mounted() {
-    this.getTime();
+    setInterval(this.getTime, 1000);
     this.createGasChart();
     mqtt.initMqtt();
     setInterval(this.getMessage, 1000);
@@ -221,7 +222,7 @@ export default {
           Time: '12:00 p.m.',
           Location: 'Bang Mueang Mai, Samut Prakarn ',
           Weather: '13° 7°',
-          Classes: ['Battery', 'Foam-box']
+          Classes: []
         },
         //data 2
         {
@@ -293,6 +294,7 @@ export default {
         // console.log('Classes:', classes);
 
         if (classCount > 0) {
+          await this.captureImage;
           await addDoc(collection(db, "waste"), {
             class: this.formatClassName(className),
             image: "https://firebasestorage.googleapis.com/v0/b/waste-detection-61420.appspot.com/o/historical-images%2FV0o8ecEvsazqgekZGdjz%2Fimage.png?alt=media&token=8a65fb20-899d-4962-93fe-928eb8a13ed2",
@@ -303,6 +305,18 @@ export default {
         }
       } catch (error) {
         console.log("Error create data", error.message);
+      }
+    },
+    async captureImage() {
+      try {
+        const response = await axios.get('http://192.168.1.44:5000/video_feed_predicted');
+        if (response.data.message === 'Image captured successfully!') {
+          console.log('Image captured:', response.data.filename);
+        } else {
+          console.error('Error capturing image:', response.data.message);
+        }
+      } catch (error) {
+        console.error('Error:', error);
       }
     },
     getMessage() {
