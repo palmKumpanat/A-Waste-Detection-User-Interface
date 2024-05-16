@@ -319,6 +319,36 @@ export default {
         console.error('Error:', error);
       }
     },
+    async uploadImage(file) {
+      if (!file) {
+        console.error("No file selected for upload");
+        return;
+      }
+      try {
+        const storage = getStorage();
+        const storageRef = ref(storage, `historical-images/${file.name}`);
+
+        const uploadTask = uploadBytes(storageRef, file);
+
+        uploadTask.on(
+          "state_changed",
+          (snapshot) => {
+            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+            console.log(`Upload is ${progress}% done`);
+          },
+          (error) => {
+            console.error("Error uploading file", error);
+          },
+          async () => {
+            const downloadURL = await uploadTask.snapshot.ref.getDownloadURL();
+            this.tempImageURL = downloadURL;
+            console.log("File uploaded successfully:", downloadURL);
+          }
+        );
+      } catch (error) {
+        console.error("Error");
+      }
+    },
     getMessage() {
       var message = mqtt.getMessage();
       if (message) {
