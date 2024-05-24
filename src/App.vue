@@ -186,8 +186,10 @@
 
 <script>
 import Chart from 'chart.js/auto';
-import mqtt from './utils/mqtt/subscribe.js'
+import mqtt from './utils/mqtt/mqtt.js'
+import Paho from 'paho-mqtt';
 import calculatePPM from './utils/mqsensor/calculate.js'
+import axios from 'axios'
 export default {
   name: 'App',
   // mounted() {
@@ -198,6 +200,7 @@ export default {
     mqtt.initMqtt();
     setInterval(this.getMessage, 1000);
     setInterval(this.updateGasChart, 1000); // อัปเดตทุกๆ 1 วินาที
+    this.addKeyboardEventListeners();
   },
   data() {
     return {
@@ -248,7 +251,9 @@ export default {
         alcohol:  0.0,
         tolueno:  0.0
       }],
-      gasChart: null
+      gasChart: null,
+      activeKey: null,
+      keyboardTemp: null
     };
   },
   methods: {
@@ -257,6 +262,78 @@ export default {
     // },
     // prevData() {
     //   this.currentDataIndex = (this.currentDataIndex - 1 + this.simulatedData.length) % this.simulatedData.length;
+    // },
+    addKeyboardEventListeners() {
+      document.addEventListener('keydown', this.handleKeydown)
+      document.addEventListener('keyup', this.handleKeyup)
+    },
+    handleKeydown(event) {
+      const key = event.key.toLowerCase();
+      if (['w', 'a', 's', 'd'].includes(key)) {
+        this.activeKey = key;
+        this.publishMessage(key);
+      }
+    },
+    handleKeyup(event) {
+      const key = event.key.toLowerCase();
+      if (['w', 'a', 's', 'd'].includes(key)) {
+        if (this.activeKey === key) {
+          this.activeKey = null;
+          this.publishMessage('stop');
+        }
+      }
+    },
+    async publishMessage(message) {
+      const topic = 'WasteDetectionOnRaspberryPi/controlCar'; // Update the topic name
+      const payload = message;
+
+      if(payload === this.keyboardTemp) return 0;
+
+      const myClient = mqtt.getClient();
+
+      if (myClient && myClient.isConnected()) {
+        this.getTime().then((time) => {
+          let data = {
+            time: time,
+            message: message
+          };
+          console.log(data)
+          data = JSON.stringify(data);
+          const msg = new Paho.Message(data);
+          msg.qos = 0;
+          msg.destinationName = topic;
+
+          myClient.send(msg);
+
+          this.keyboardTemp = payload;
+          console.log(`Published message: ${data} to topic: ${topic}`);
+        })
+      } else {
+        console.error('MQTT client is not connected');
+      }
+    },
+    async getTime(){
+      try {
+        const response = await axios.get('http://worldtimeapi.org/api/timezone/Asia/Bangkok');
+        const time = response.data.datetime;
+        return time;
+      } catch (error) {
+        console.error(error); // Handle errors
+      }
+    },
+    // calculateTime(date){
+    //   const year = date.getFullYear();
+    //   const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are zero-indexed
+    //   const day = String(date.getDate()).padStart(2, '0');
+    //   const hours = String(date.getHours()).padStart(2, '0');
+    //   const minutes = String(date.getMinutes()).padStart(2, '0');
+    //   const seconds = String(date.getSeconds()).padStart(2, '0');
+    //   const milliseconds = String(date.getMilliseconds()).padStart(3, '0');
+
+    //   // Construct the desired format
+    //   const desiredFormat = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}.${milliseconds}`;
+
+    //   return desiredFormat;
     // },
     goToHistorical() {
       this.$router.push('/historical');
@@ -322,6 +399,10 @@ export default {
         }
       });
     }
+  },
+  beforeUnmount() {
+    document.removeEventListener('keydown', this.handleKeydown)
+    document.removeEventListener('keyup', this.handleKeyup)
   },
   computed: {
     currentData() {

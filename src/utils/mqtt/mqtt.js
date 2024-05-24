@@ -1,6 +1,7 @@
 import Paho from 'paho-mqtt';
 
 var messageDict;
+var myClient;
 
 const initMqtt = () => {
   const brokerUrl = 'broker.emqx.io';
@@ -9,12 +10,14 @@ const initMqtt = () => {
   const topic = 'WasteDetectionOnRaspberryPi';
 
   const client = new Paho.Client(brokerUrl, Number(port), clientId);
+  myClient = client;
 
   // Connection callbacks
   client.onConnectionLost = onConnectionLost;
   client.onMessageArrived = onMessageArrived;
 
   client.connect({ onSuccess: onConnect });
+
   function onConnect() {
     console.log('Connected to MQTT broker');
     // Subscribe to the topic after successful connection
@@ -38,5 +41,10 @@ const getMessage = () =>{
   return messageDict;
 }
 
-const mqtt = {initMqtt, getMessage};
+const getClient = () =>{
+  return myClient;
+}
+
+
+const mqtt = {initMqtt, getMessage, getClient};
 export default mqtt;
