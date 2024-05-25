@@ -101,8 +101,8 @@
                               class="d-block w-100" width="100%" height="320" /> -->
                             <!-- <img id="camera-stream" src="http://172.20.10.3:5000/video_feed_original" alt="Camera Stream" -->
                             <!--   class="d-block w-100" width="100%" height="320"> -->
-                            <img id="camera-stream" src="http://192.168.1.45:5000/video_feed_original"
-                              alt="Camera Stream" class="d-block w-100" width="100%" height="320">
+                            <!-- <img id="camera-stream" src="http://192.168.1.45:5000/video_feed_original" -->
+                            <!--   alt="Camera Stream" class="d-block w-100" width="100%" height="320"> -->
                           </div>
                         </div>
                       </div>
@@ -128,8 +128,8 @@
                                 class="d-block w-100" width="100%" height="320" /> -->
                               <!-- <img id="camera-stream" src="http://172.20.10.3:5000/video_feed_predicted" -->
                               <!--   alt="Camera Stream" class="d-block w-100" width="100%" height="320"> -->
-                              <img id="camera-stream" src="http://192.168.1.45:5000/video_feed_predicted"
-                                alt="Camera Stream" class="d-block w-100" width="100%" height="320">
+                              <!-- <img id="camera-stream" src="http://192.168.1.45:5000/video_feed_predicted" -->
+                              <!--   alt="Camera Stream" class="d-block w-100" width="100%" height="320"> -->
                               <!-- <canvas id="canvas" style="display: none;"></canvas> -->
                             </div>
                           </div>
@@ -198,6 +198,7 @@ import calculatePPM from './utils/mqsensor/calculate.js'
 import { collection, addDoc } from 'firebase/firestore'
 import { ref, getDownloadURL, uploadBytes } from 'firebase/storage'
 import { db, storage } from '@/firebase'
+import sendNotification from './utils/line/line_notify.js'
 import html2canvas from 'html2canvas'
 // import domtoimage from 'dom-to-image-more'
 // import { saveAs } from 'file-saver'
@@ -212,7 +213,8 @@ export default {
     mqtt.initMqtt();
     setInterval(this.getMessage, 1000);
     setInterval(this.updateGasChart, 1000); // อัปเดตทุกๆ 1 วินาที
-    setInterval(this.createData, 1000);
+    this.sendLineNotify();
+    // setInterval(this.createData, 1000);
     // this.createData();
     // this.captureImage;
     // setInterval(this.captureImage(), 3000);
@@ -298,23 +300,26 @@ export default {
     },
     async createData() {
       try {
-        const amount = this.currentData.Classes.length;
+        // const amount = this.currentData.Classes.length;
         const classes = this.currentData.Classes.slice();
 
-        if (amount > 0) {
-          await this.captureImage();
-          await addDoc(collection(db, "waste"), {
-            class: classes,
-            image: this.captureImageURL,
-            // image: "https://firebasestorage.googleapis.com/v0/b/waste-detection-61420.appspot.com/o/historical-images%2FV0o8ecEvsazqgekZGdjz%2Fimage.png?alt=media&token=8a65fb20-899d-4962-93fe-928eb8a13ed2",
-            locaiton: "Bang Mot, Krung Thep Maha Nakhon",
-            time: this.currentData.currentTime,
-            weather: "18° 11°",
-          });
+        // if (amount > 0) {
+        // await this.captureImage();
+        await addDoc(collection(db, "waste"), {
+          class: classes,
+          image: "",
+          // image: "https://firebasestorage.googleapis.com/v0/b/waste-detection-61420.appspot.com/o/historical-images%2FV0o8ecEvsazqgekZGdjz%2Fimage.png?alt=media&token=8a65fb20-899d-4962-93fe-928eb8a13ed2",
+          locaiton: "Bang Mot, Krung Thep Maha Nakhon",
+          // time: this.currentData.currentTime,
+          time: "25 May 2024 09:27 PM",
+          weather: "18° 11°",
+          gas_data: this.gas_data[0],
+        }).then(() => {
           console.log("Create data success!");
-        }
+        });
+        // }
       } catch (error) {
-        console.log("Error create data", error.message);
+        console.log("Error create data:", error.message);
       }
     },
     async uploadImage() {
@@ -380,6 +385,12 @@ export default {
           reject(new Error("Element not found")); // Reject the Promise if element is not found
         }
       });
+    },
+    async sendLineNotify() {
+      const message = "Test line notification from vue.js";
+      // const imageURL = "https://firebasestorage.googleapis.com/v0/b/waste-detection-61420.appspot.com/o/historical-images%2FV0o8ecEvsazqgekZGdjz%2Fimage.png?alt=media&token=8a65fb20-899d-4962-93fe-928eb8a13ed2"
+      // await sendNotification(message, imageURL);
+      await sendNotification(message);
     },
     getMessage() {
       var message = mqtt.getMessage();
