@@ -54,7 +54,7 @@
             </div>
             <div class="col-xl-4 col-md-6">
               <div class="card text-white mb-4">
-                <div class="card-body">Location : {{ currentData.Location }}</div>
+                <div class="card-body" id="location-id">Location : {{ currentData.Location }}</div>
               </div>
             </div>
             <div class="col-xl-4 col-md-6">
@@ -101,7 +101,7 @@
                               class="d-block w-100" width="100%" height="320" /> -->
                             <!-- <img id="camera-stream" src="http://172.20.10.3:5000/video_feed_original" alt="Camera Stream" -->
                             <!--   class="d-block w-100" width="100%" height="320"> -->
-                            <img id="camera-stream" src="http://192.168.1.44:5000/video_feed_original"
+                            <img id="camera-stream" src="http://192.168.1.45:5000/video_feed_original"
                               alt="Camera Stream" class="d-block w-100" width="100%" height="320">
                           </div>
                         </div>
@@ -117,7 +117,7 @@
                   <i class="fas fa-chart-bar me-1"></i>
                   Result
                 </div>
-                <div>
+                <div id="capture-image" z-index="999">
                   <div class="card-show-image">
                     <div class="row">
                       <div class="col-xl-12">
@@ -128,8 +128,9 @@
                                 class="d-block w-100" width="100%" height="320" /> -->
                               <!-- <img id="camera-stream" src="http://172.20.10.3:5000/video_feed_predicted" -->
                               <!--   alt="Camera Stream" class="d-block w-100" width="100%" height="320"> -->
-                              <img id="camera-stream" src="http://192.168.1.44:5000/video_feed_predicted"
+                              <img id="camera-stream" src="http://192.168.1.45:5000/video_feed_predicted"
                                 alt="Camera Stream" class="d-block w-100" width="100%" height="320">
+                              <!-- <canvas id="canvas" style="display: none;"></canvas> -->
                             </div>
                           </div>
                         </div>
@@ -195,8 +196,11 @@ import Chart from 'chart.js/auto';
 import mqtt from './utils/mqtt/subscribe.js'
 import calculatePPM from './utils/mqsensor/calculate.js'
 import { collection, addDoc } from 'firebase/firestore'
-import { db } from '@/firebase'
-import axios from 'axios'
+import { ref, getDownloadURL, uploadBytes } from 'firebase/storage'
+import { db, storage } from '@/firebase'
+import html2canvas from 'html2canvas'
+// import domtoimage from 'dom-to-image-more'
+// import { saveAs } from 'file-saver'
 export default {
   name: 'App',
   // mounted() {
@@ -209,6 +213,9 @@ export default {
     setInterval(this.getMessage, 1000);
     setInterval(this.updateGasChart, 1000); // อัปเดตทุกๆ 1 วินาที
     setInterval(this.createData, 1000);
+    // this.createData();
+    // this.captureImage;
+    // setInterval(this.captureImage(), 3000);
   },
   data() {
     return {
@@ -245,6 +252,8 @@ export default {
           Weather: '14° 11°',
         },
       ],
+      captured_image: 'http://192.168.1.45:5000/video_feed_predicted',
+      captureImageURL: '',
       currentDataIndex: 0,
       currentTime: '',
       gas_data: [{
@@ -287,67 +296,90 @@ export default {
         return className;
       }
     },
-    async createData(className) {
+    async createData() {
       try {
-        const classCount = this.currentData.Classes.length;
-        // console.log('Class count:', classCount)
-        // console.log('Classes:', classes);
+        const amount = this.currentData.Classes.length;
+        const classes = this.currentData.Classes.slice();
 
-        if (classCount > 0) {
-          await this.captureImage;
+        if (amount > 0) {
+          await this.captureImage();
           await addDoc(collection(db, "waste"), {
-            class: this.formatClassName(className),
-            image: "https://firebasestorage.googleapis.com/v0/b/waste-detection-61420.appspot.com/o/historical-images%2FV0o8ecEvsazqgekZGdjz%2Fimage.png?alt=media&token=8a65fb20-899d-4962-93fe-928eb8a13ed2",
-            locaiton: "test location 3",
+            class: classes,
+            image: this.captureImageURL,
+            // image: "https://firebasestorage.googleapis.com/v0/b/waste-detection-61420.appspot.com/o/historical-images%2FV0o8ecEvsazqgekZGdjz%2Fimage.png?alt=media&token=8a65fb20-899d-4962-93fe-928eb8a13ed2",
+            locaiton: "Bang Mot, Krung Thep Maha Nakhon",
             time: this.currentData.currentTime,
             weather: "18° 11°",
           });
+          console.log("Create data success!");
         }
       } catch (error) {
         console.log("Error create data", error.message);
       }
     },
-    async captureImage() {
+    async uploadImage() {
+      const blob = this.captureImageURL;
+      const storageRef = ref(storage, 'historical-images/captured_image.jpg');
+      const metadata = {
+        contentType: 'image/jpeg'
+      };
+
       try {
-        const response = await axios.get('http://192.168.1.44:5000/video_feed_predicted');
-        if (response.data.message === 'Image captured successfully!') {
-          console.log('Image captured:', response.data.filename);
-        } else {
-          console.error('Error capturing image:', response.data.message);
-        }
+        const snapshot = await uploadBytes(storageRef, blob, metadata);
+        const downloadURL = await getDownloadURL(snapshot.ref);
+        this.captureImageURL = downloadURL;
+
+        // console.log('File available at', this.captureImageURL);
+        return downloadURL;
+        // alert('Upload successful: ' + downloadURL);
       } catch (error) {
-        console.error('Error:', error);
+        console.error('Upload failed:', error);
+        // alert('Upload failed: ' + error.message);
       }
     },
-    async uploadImage(file) {
-      if (!file) {
-        console.error("No file selected for upload");
-        return;
-      }
-      try {
-        const storage = getStorage();
-        const storageRef = ref(storage, `historical-images/${file.name}`);
-
-        const uploadTask = uploadBytes(storageRef, file);
-
-        uploadTask.on(
-          "state_changed",
-          (snapshot) => {
-            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-            console.log(`Upload is ${progress}% done`);
-          },
-          (error) => {
-            console.error("Error uploading file", error);
-          },
-          async () => {
-            const downloadURL = await uploadTask.snapshot.ref.getDownloadURL();
-            this.tempImageURL = downloadURL;
-            console.log("File uploaded successfully:", downloadURL);
-          }
-        );
-      } catch (error) {
-        console.error("Error");
-      }
+    // captureImage() {
+    //   const element = document.getElementById('capture-image');
+    //   // const amount = this.currentData.Classes.length;
+    //   // if (element && amount > 0) {
+    //   if (element) {
+    //     html2canvas(element).then((canvas) => {
+    //       const dataURL = canvas.toDataURL("image/png");
+    //       this.captureImageURL = dataURL;
+    //
+    //       // console.log(dataURL);
+    //       // return dataURL;
+    //       // this.captureImageURL = dataURL;
+    //       console.log(this.captureImageURL);
+    //     })
+    //   } else {
+    //     console.error("Element not found");
+    //   }
+    // },
+    captureImage() {
+      return new Promise((resolve, reject) => {
+        const element = document.getElementById('capture-image');
+        if (element) {
+          html2canvas(element, {
+            allowTaint: true,
+            useCORS: true,
+            logging: false,
+            height: window.outerHeight + window.innerHeight,
+            windowHeight: window.outerHeight + window.innerHeight,
+          }).then((canvas) => {
+            const dataURL = canvas.toDataURL("image/png");
+            this.captureImageURL = dataURL;
+            // console.log(this.captureImageURL);
+            resolve(); // Resolve the Promise once the capture is completed
+            // return dataURL;
+          }).catch(error => {
+            console.error("Error capturing image:", error);
+            reject(error); // Reject the Promise if there's an error
+          });
+        } else {
+          console.error("Element not found");
+          reject(new Error("Element not found")); // Reject the Promise if element is not found
+        }
+      });
     },
     getMessage() {
       var message = mqtt.getMessage();
@@ -401,10 +433,18 @@ export default {
     },
     getTime() {
       const date = new Date();
-      const hours = date.getHours().toString().padStart(2, '0');
+      const day = date.getDate().toString().padStart(2, '0');
+      const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+      const month = monthNames[date.getMonth()];
+      const year = date.getFullYear();
+      let hours = date.getHours();
       const minutes = date.getMinutes().toString().padStart(2, '0');
       const ampm = hours >= 12 ? 'PM' : 'AM';
-      const formattedTime = `${hours}:${minutes} ${ampm}`;
+      hours = hours % 12;
+      hours = hours ? hours : 12; // the hour '0' should be '12'
+      const formattedHours = hours.toString().padStart(2, '0');
+      const formattedTime = `${day} ${month} ${year} ${formattedHours}:${minutes} ${ampm}`;
+      // console.log(formattedTime);
       this.currentData.currentTime = formattedTime;
     },
   },
