@@ -117,7 +117,7 @@
                   <i class="fas fa-chart-bar me-1"></i>
                   Result
                 </div>
-                <div id="capture-image" z-index="999">
+                <div>
                   <div class="card-show-image">
                     <div class="row">
                       <div class="col-xl-12">
@@ -130,7 +130,8 @@
                               <!--   alt="Camera Stream" class="d-block w-100" width="100%" height="320"> -->
                               <!-- <img id="camera-stream" src="http://192.168.1.45:5000/video_feed_predicted" -->
                               <!--   alt="Camera Stream" class="d-block w-100" width="100%" height="320"> -->
-                              <!-- <canvas id="canvas" style="display: none;"></canvas> -->
+                              <img id="capture-image" src="http://www.columbia.edu/~fdc/picture-of-something.jpg"
+                                alt="Camera Stream" class="d-block w-100" width="100%" height="320">
                             </div>
                           </div>
                         </div>
@@ -200,8 +201,6 @@ import { ref, getDownloadURL, uploadBytes } from 'firebase/storage'
 import { db, storage } from '@/firebase'
 import sendNotification from './utils/line/line_notify.js'
 import html2canvas from 'html2canvas'
-// import domtoimage from 'dom-to-image-more'
-// import { saveAs } from 'file-saver'
 export default {
   name: 'App',
   // mounted() {
@@ -213,11 +212,11 @@ export default {
     mqtt.initMqtt();
     setInterval(this.getMessage, 1000);
     setInterval(this.updateGasChart, 1000); // อัปเดตทุกๆ 1 วินาที
-    this.sendLineNotify();
+    // this.sendLineNotify();
     // setInterval(this.createData, 1000);
     // this.createData();
-    // this.captureImage;
-    // setInterval(this.captureImage(), 3000);
+    // this.captureImage();
+    // setInterval(this.captureImage, 3000);
   },
   data() {
     return {
@@ -304,7 +303,7 @@ export default {
         const classes = this.currentData.Classes.slice();
 
         // if (amount > 0) {
-        // await this.captureImage();
+        // await this.captureImage;
         await addDoc(collection(db, "waste"), {
           class: classes,
           image: "",
@@ -362,27 +361,30 @@ export default {
     // },
     captureImage() {
       return new Promise((resolve, reject) => {
-        const element = document.getElementById('capture-image');
-        if (element) {
+        try {
+          const element = document.getElementById('capture-image');
+          if (!element) {
+            console.error("Element not found");
+            return reject(new Error("Element not found")); // Reject the Promise if element is not found
+          }
           html2canvas(element, {
             allowTaint: true,
             useCORS: true,
             logging: false,
-            height: window.outerHeight + window.innerHeight,
-            windowHeight: window.outerHeight + window.innerHeight,
+            height: element.offsetHeight,
+            windowHeight: element.offsetHeight,
           }).then((canvas) => {
             const dataURL = canvas.toDataURL("image/png");
-            this.captureImageURL = dataURL;
-            // console.log(this.captureImageURL);
-            resolve(); // Resolve the Promise once the capture is completed
-            // return dataURL;
+            console.log(dataURL);
+            resolve(dataURL); // Resolve the Promise with the captured image data URL
           }).catch(error => {
             console.error("Error capturing image:", error);
             reject(error); // Reject the Promise if there's an error
           });
-        } else {
-          console.error("Element not found");
-          reject(new Error("Element not found")); // Reject the Promise if element is not found
+
+        } catch (error) {
+          console.error("Unexpected error:", error);
+          reject(error); // Reject the Promise for any unexpected errors
         }
       });
     },
