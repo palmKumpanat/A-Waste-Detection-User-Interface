@@ -54,12 +54,12 @@
             </div>
             <div class="col-xl-4 col-md-6">
               <div class="card text-white mb-4">
-                <div class="card-body" id="location-id">Location : {{ currentData.Location }}</div>
+                <div class="card-body" id="location-id">Location : {{ currentLocation }}</div>
               </div>
             </div>
             <div class="col-xl-4 col-md-6">
               <div class="card text-white mb-4">
-                <div class="card-body">Weather : {{ currentData.Weather }}</div>
+                <div class="card-body">Weather : {{ currentWeather }} C°</div>
               </div>
             </div>
           </div>
@@ -99,8 +99,8 @@
                           <div class="carousel-item active">
                             <!-- <img :src=currentData.Image_before_src :alt="currentData.Image_before_alt"
                               class="d-block w-100" width="100%" height="320" /> -->
-                            <!-- <img id="camera-stream" src="http://172.20.10.3:5000/video_feed_original" alt="Camera Stream" -->
-                            <!--   class="d-block w-100" width="100%" height="320"> -->
+                            <img id="camera-stream" src="http://172.20.10.3:5000/video_feed_original"
+                              alt="Camera Stream" class="d-block w-100" width="100%" height="320">
                             <!-- <img id="camera-stream" src="http://192.168.1.45:5000/video_feed_original" -->
                             <!--   alt="Camera Stream" class="d-block w-100" width="100%" height="320"> -->
                           </div>
@@ -117,7 +117,7 @@
                   <i class="fas fa-chart-bar me-1"></i>
                   Result
                 </div>
-                <div id="capture-image" z-index="999">
+                <div>
                   <div class="card-show-image">
                     <div class="row">
                       <div class="col-xl-12">
@@ -126,11 +126,12 @@
                             <div class="carousel-item active">
                               <!-- <img :src="currentData.Image_predict_src" :alt="currentData.Image_predict_alt"
                                 class="d-block w-100" width="100%" height="320" /> -->
-                              <!-- <img id="camera-stream" src="http://172.20.10.3:5000/video_feed_predicted" -->
-                              <!--   alt="Camera Stream" class="d-block w-100" width="100%" height="320"> -->
+                              <img id="capture-image" src="http://172.20.10.3:5000/video_feed_predicted"
+                                alt="Camera Stream" class="d-block w-100" width="100%" height="320">
                               <!-- <img id="camera-stream" src="http://192.168.1.45:5000/video_feed_predicted" -->
                               <!--   alt="Camera Stream" class="d-block w-100" width="100%" height="320"> -->
-                              <!-- <canvas id="canvas" style="display: none;"></canvas> -->
+                              <!-- <img id="capture-image" src="http://www.columbia.edu/~fdc/picture-of-something.jpg" -->
+                              <!--   alt="Camera Stream" class="d-block w-100" width="100%" height="320"> -->
                             </div>
                           </div>
                         </div>
@@ -222,12 +223,10 @@ import mqtt from './utils/mqtt/mqtt.js'
 import Paho from 'paho-mqtt';
 import calculatePPM from './utils/mqsensor/calculate.js'
 import { collection, addDoc } from 'firebase/firestore'
-import { ref, getDownloadURL, uploadBytes } from 'firebase/storage'
-import { db, storage } from '@/firebase'
+import { db } from '@/firebase'
+import axios from 'axios'
 import sendNotification from './utils/line/line_notify.js'
 import html2canvas from 'html2canvas'
-// import domtoimage from 'dom-to-image-more'
-// import { saveAs } from 'file-saver'
 import axios from 'axios'
 export default {
   name: 'App',
@@ -237,11 +236,13 @@ export default {
   mounted() {
     setInterval(this.getTime, 1000);
     this.createGasChart();
+    // this.fetchWeather();
+    setInterval(this.fetchWeather(), 1800000);
     mqtt.initMqtt();
     setInterval(this.getMessage, 1000);
     setInterval(this.updateGasChart, 1000); // อัปเดตทุกๆ 1 วินาที
-    this.sendLineNotify();
-    // setInterval(this.createData, 1000);
+    // this.sendLineNotify();
+    setInterval(this.createData, 1000);
     // this.createData();
     // this.captureImage;
     // setInterval(this.captureImage(), 3000);
@@ -286,10 +287,13 @@ export default {
           Weather: '14° 11°',
         },
       ],
-      captured_image: 'http://192.168.1.45:5000/video_feed_predicted',
-      captureImageURL: '',
       currentDataIndex: 0,
-      currentTime: '',
+      captureImageURL: null,
+      currentTime: null,
+      currentWeather: null,
+      currentLat: null,
+      currentLong: null,
+      currentLocation: null,
       gas_data: [{
         lpg: 0.0,
         smoke: 0.0,
@@ -407,90 +411,96 @@ export default {
     },
     async createData() {
       try {
-        // const amount = this.currentData.Classes.length;
+        const amount = this.currentData.Classes.length;
         const classes = this.currentData.Classes.slice();
 
-        // if (amount > 0) {
-        // await this.captureImage();
-        await addDoc(collection(db, "waste"), {
-          class: classes,
-          image: "",
-          // image: "https://firebasestorage.googleapis.com/v0/b/waste-detection-61420.appspot.com/o/historical-images%2FV0o8ecEvsazqgekZGdjz%2Fimage.png?alt=media&token=8a65fb20-899d-4962-93fe-928eb8a13ed2",
-          locaiton: "Bang Mot, Krung Thep Maha Nakhon",
-          // time: this.currentData.currentTime,
-          time: "25 May 2024 09:27 PM",
-          weather: "18° 11°",
-          gas_data: this.gas_data[0],
-        }).then(() => {
-          console.log("Create data success!");
-        });
-        // }
+        if (amount > 0) {
+          await this.captureImage();
+          await addDoc(collection(db, "waste"), {
+            class: classes,
+            image: this.captureImageURL,
+            // image: "https://firebasestorage.googleapis.com/v0/b/waste-detection-61420.appspot.com/o/historical-images%2FV0o8ecEvsazqgekZGdjz%2Fimage.png?alt=media&token=8a65fb20-899d-4962-93fe-928eb8a13ed2",
+            location: this.currentLocation,
+            time: this.currentData.currentTime,
+            weather: `${this.currentWeather} C°`,
+            gas_data: this.gas_data[0],
+          }).then(() => {
+            console.log("Create data success!");
+          });
+        }
       } catch (error) {
         console.log("Error create data:", error.message);
       }
     },
-    async uploadImage() {
-      const blob = this.captureImageURL;
-      const storageRef = ref(storage, 'historical-images/captured_image.jpg');
-      const metadata = {
-        contentType: 'image/jpeg'
-      };
-
-      try {
-        const snapshot = await uploadBytes(storageRef, blob, metadata);
-        const downloadURL = await getDownloadURL(snapshot.ref);
-        this.captureImageURL = downloadURL;
-
-        // console.log('File available at', this.captureImageURL);
-        return downloadURL;
-        // alert('Upload successful: ' + downloadURL);
-      } catch (error) {
-        console.error('Upload failed:', error);
-        // alert('Upload failed: ' + error.message);
-      }
-    },
-    // captureImage() {
-    //   const element = document.getElementById('capture-image');
-    //   // const amount = this.currentData.Classes.length;
-    //   // if (element && amount > 0) {
-    //   if (element) {
-    //     html2canvas(element).then((canvas) => {
-    //       const dataURL = canvas.toDataURL("image/png");
-    //       this.captureImageURL = dataURL;
-    //
-    //       // console.log(dataURL);
-    //       // return dataURL;
-    //       // this.captureImageURL = dataURL;
-    //       console.log(this.captureImageURL);
-    //     })
-    //   } else {
-    //     console.error("Element not found");
-    //   }
-    // },
     captureImage() {
       return new Promise((resolve, reject) => {
-        const element = document.getElementById('capture-image');
-        if (element) {
+        try {
+          const element = document.getElementById('capture-image');
+          if (!element) {
+            console.error("Element not found");
+            return reject(new Error("Element not found")); // Reject the Promise if element is not found
+          }
           html2canvas(element, {
             allowTaint: true,
             useCORS: true,
             logging: false,
-            height: window.outerHeight + window.innerHeight,
-            windowHeight: window.outerHeight + window.innerHeight,
+            height: element.offsetHeight,
+            windowHeight: element.offsetHeight,
           }).then((canvas) => {
             const dataURL = canvas.toDataURL("image/png");
             this.captureImageURL = dataURL;
-            // console.log(this.captureImageURL);
-            resolve(); // Resolve the Promise once the capture is completed
-            // return dataURL;
+            // console.log(dataURL);
+            resolve(dataURL); // Resolve the Promise with the captured image data URL
           }).catch(error => {
             console.error("Error capturing image:", error);
             reject(error); // Reject the Promise if there's an error
           });
-        } else {
-          console.error("Element not found");
-          reject(new Error("Element not found")); // Reject the Promise if element is not found
+
+        } catch (error) {
+          console.error("Unexpected error:", error);
+          reject(error); // Reject the Promise for any unexpected errors
         }
+      });
+    },
+    async fetchWeather() {
+      await this.fetchLocation();
+      const apiKey = process.env.VUE_APP_OPENWEATHERMAP_API_KEY;
+      const googleApiKey = process.env.VUE_APP_GOOGLE_API_KEY;
+      const url = `https://api.openweathermap.org/data/2.5/weather?lat=${this.currentLat}&lon=${this.currentLong}&units=metric&appid=${apiKey}`;
+      const googleApiUrl = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${this.currentLat},${this.currentLong}&key=${googleApiKey}`
+
+      await axios.get(url)
+        .then(response => {
+          this.currentWeather = Math.round(response.data.main.temp)
+        })
+        .catch(error => {
+          console.error("Error fetching weather:", error);
+        })
+
+      await axios.get(googleApiUrl).
+        then(response => {
+          this.currentLocation = response.data.results[7].formatted_address;
+          // console.log(this.currentLocation);
+        })
+        .catch(error => {
+          console.error("Error google location:", error);
+        })
+    },
+    fetchLocation() {
+      return new Promise((resolve, reject) => {
+        const success = (position) => {
+          this.currentLat = position.coords.latitude;
+          this.currentLong = position.coords.longitude;
+          resolve(); // Resolve the promise when the position is successfully retrieved
+        };
+
+        const error = (err) => {
+          console.log(err);
+          reject(err); // Reject the promise if there's an error
+        };
+
+        // This will open permission popup
+        navigator.geolocation.getCurrentPosition(success, error);
       });
     },
     async sendLineNotify() {
@@ -557,11 +567,12 @@ export default {
       const year = date.getFullYear();
       let hours = date.getHours();
       const minutes = date.getMinutes().toString().padStart(2, '0');
+      const seconds = date.getSeconds().toString().padStart(2, '0');
       const ampm = hours >= 12 ? 'PM' : 'AM';
       hours = hours % 12;
       hours = hours ? hours : 12; // the hour '0' should be '12'
       const formattedHours = hours.toString().padStart(2, '0');
-      const formattedTime = `${day} ${month} ${year} ${formattedHours}:${minutes} ${ampm}`;
+      const formattedTime = `${day} ${month} ${year} ${formattedHours}:${minutes}:${seconds} ${ampm}`;
       // console.log(formattedTime);
       this.currentData.currentTime = formattedTime;
     },

@@ -3,13 +3,13 @@ import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyCqHfCSV3SBQ2pN9UE4Gjk719xl45yc7y8",
-  authDomain: "waste-detection-61420.firebaseapp.com",
-  projectId: "waste-detection-61420",
-  storageBucket: "waste-detection-61420.appspot.com",
-  messagingSenderId: "1051945399334",
-  appId: "1:1051945399334:web:3433b7a7beb7be9285e2e7",
-  measurementId: "G-M1LDL7PT49",
+  apiKey: process.env.VUE_APP_FIREBASE_API_KEY,
+  authDomain: process.env.VUE_APP_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.VUE_APP_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.VUE_APP_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.VUE_APP_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.VUE_APP_FIREBASE_APP_ID,
+  measurementId: process.env.VUE_APP_FIREBASE_MEASUREMENT_ID
 };
 
 const app = initializeApp(firebaseConfig);
