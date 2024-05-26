@@ -54,12 +54,12 @@
             </div>
             <div class="col-xl-4 col-md-6">
               <div class="card text-white mb-4">
-                <div class="card-body" id="location-id">Location : {{ currentData.Location }}</div>
+                <div class="card-body" id="location-id">Location : {{ currentLocation }}</div>
               </div>
             </div>
             <div class="col-xl-4 col-md-6">
               <div class="card text-white mb-4">
-                <div class="card-body">Weather : {{ currentData.Weather }}</div>
+                <div class="card-body">Weather : {{ currentWeather }} C°</div>
               </div>
             </div>
           </div>
@@ -197,8 +197,8 @@ import Chart from 'chart.js/auto';
 import mqtt from './utils/mqtt/subscribe.js'
 import calculatePPM from './utils/mqsensor/calculate.js'
 import { collection, addDoc } from 'firebase/firestore'
-import { ref, getDownloadURL, uploadBytes } from 'firebase/storage'
-import { db, storage } from '@/firebase'
+import { db } from '@/firebase'
+import axios from 'axios'
 import sendNotification from './utils/line/line_notify.js'
 import html2canvas from 'html2canvas'
 export default {
@@ -209,6 +209,8 @@ export default {
   mounted() {
     setInterval(this.getTime, 1000);
     this.createGasChart();
+    this.fetchWeather();
+    // setInterval(this.fetchWeather, 10000);
     mqtt.initMqtt();
     setInterval(this.getMessage, 1000);
     setInterval(this.updateGasChart, 1000); // อัปเดตทุกๆ 1 วินาที
@@ -254,9 +256,13 @@ export default {
         },
       ],
       captured_image: 'http://192.168.1.45:5000/video_feed_predicted',
-      captureImageURL: '',
+      captureImageURL: null,
       currentDataIndex: 0,
-      currentTime: '',
+      currentTime: null,
+      currentWeather: null,
+      currentLat: null,
+      currentLong: null,
+      currentLocation: null,
       gas_data: [{
         lpg: 0.0,
         smoke: 0.0,
@@ -306,12 +312,11 @@ export default {
         // await this.captureImage;
         await addDoc(collection(db, "waste"), {
           class: classes,
-          image: "",
+          image: this.captureImageURL,
           // image: "https://firebasestorage.googleapis.com/v0/b/waste-detection-61420.appspot.com/o/historical-images%2FV0o8ecEvsazqgekZGdjz%2Fimage.png?alt=media&token=8a65fb20-899d-4962-93fe-928eb8a13ed2",
-          locaiton: "Bang Mot, Krung Thep Maha Nakhon",
-          // time: this.currentData.currentTime,
-          time: "25 May 2024 09:27 PM",
-          weather: "18° 11°",
+          locaiton: this.currentLocation,
+          time: this.currentData.currentTime,
+          weather: `${this.currentWeather} C°`,
           gas_data: this.gas_data[0],
         }).then(() => {
           console.log("Create data success!");
@@ -321,44 +326,6 @@ export default {
         console.log("Error create data:", error.message);
       }
     },
-    async uploadImage() {
-      const blob = this.captureImageURL;
-      const storageRef = ref(storage, 'historical-images/captured_image.jpg');
-      const metadata = {
-        contentType: 'image/jpeg'
-      };
-
-      try {
-        const snapshot = await uploadBytes(storageRef, blob, metadata);
-        const downloadURL = await getDownloadURL(snapshot.ref);
-        this.captureImageURL = downloadURL;
-
-        // console.log('File available at', this.captureImageURL);
-        return downloadURL;
-        // alert('Upload successful: ' + downloadURL);
-      } catch (error) {
-        console.error('Upload failed:', error);
-        // alert('Upload failed: ' + error.message);
-      }
-    },
-    // captureImage() {
-    //   const element = document.getElementById('capture-image');
-    //   // const amount = this.currentData.Classes.length;
-    //   // if (element && amount > 0) {
-    //   if (element) {
-    //     html2canvas(element).then((canvas) => {
-    //       const dataURL = canvas.toDataURL("image/png");
-    //       this.captureImageURL = dataURL;
-    //
-    //       // console.log(dataURL);
-    //       // return dataURL;
-    //       // this.captureImageURL = dataURL;
-    //       console.log(this.captureImageURL);
-    //     })
-    //   } else {
-    //     console.error("Element not found");
-    //   }
-    // },
     captureImage() {
       return new Promise((resolve, reject) => {
         try {
@@ -375,6 +342,7 @@ export default {
             windowHeight: element.offsetHeight,
           }).then((canvas) => {
             const dataURL = canvas.toDataURL("image/png");
+            this.captureImageURL = dataURL;
             console.log(dataURL);
             resolve(dataURL); // Resolve the Promise with the captured image data URL
           }).catch(error => {
@@ -386,6 +354,59 @@ export default {
           console.error("Unexpected error:", error);
           reject(error); // Reject the Promise for any unexpected errors
         }
+      });
+    },
+    async fetchWeather() {
+      await this.fetchLocation();
+      const apiKey = "2f24b59115a329daf1ce4082a378e063"
+      const url = `https://api.openweathermap.org/data/2.5/weather?lat=${this.currentLat}&lon=${this.currentLong}&units=metric&appid=${apiKey}`;
+      const googleApiKey = "AIzaSyBJ6Fs26tOoa6r4Uc9Czrn_Qwqa5dpKZX0"
+      const googleApiUrl = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${this.currentLat},${this.currentLong}&key=${googleApiKey}`
+
+      await axios.get(url)
+        .then(response => {
+          this.currentWeather = Math.round(response.data.main.temp)
+        })
+        .catch(error => {
+          console.error("Error fetching weather:", error);
+        })
+
+      await axios.get(googleApiUrl).
+        then(response => {
+          // console.log(response.data);
+          this.currentLocation = `${response.data.results[7].formatted_address}`
+        })
+        .catch(error => {
+          console.error("Error google location:", error);
+        })
+    },
+    fetchLocation() {
+      // const success = (position) => {
+      //   this.currentLat = position.coords.latitude;
+      //   this.currentLong = position.coords.longitude;
+      //   // console.log(this.currentLat, this.currentLong);
+      // };
+      //
+      // const error = (err) => {
+      //   console.log(err)
+      // };
+      //
+      // // This will open permission popup
+      // navigator.geolocation.getCurrentPosition(success, error);
+      return new Promise((resolve, reject) => {
+        const success = (position) => {
+          this.currentLat = position.coords.latitude;
+          this.currentLong = position.coords.longitude;
+          resolve(); // Resolve the promise when the position is successfully retrieved
+        };
+
+        const error = (err) => {
+          console.log(err);
+          reject(err); // Reject the promise if there's an error
+        };
+
+        // This will open permission popup
+        navigator.geolocation.getCurrentPosition(success, error);
       });
     },
     async sendLineNotify() {
