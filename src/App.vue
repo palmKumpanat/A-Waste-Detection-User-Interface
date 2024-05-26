@@ -178,6 +178,31 @@
         </div>
       </main>
     </div>
+      <!-- Modal -->
+  <div id="welcomeModal" class="modal" tabindex="-1" role="dialog" v-if="showModal">
+    <div class="modal-dialog modal-lg" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">การควบคุมรถบังคับไร้สาย </h5>
+          <button type="button" class="close" data-dismiss="modal" aria-label="Close" @click="showModal = false">
+            <span aria-hidden="true">&times;</span>
+          </button>
+        </div>
+        <div class="modal-body">
+          <p>การควบคุมทิศทางการเคลื่อนที่ของรถบังคับ สามารถควบคุมรถโดยใช้ปุ่ม W, A, S, D บนแป้นพิมพ์ โดยที่</p>
+          <div class="text-center">
+          <p>W -> เดินหน้า</p>
+          <p>A -> เลี้ยวซ้าย</p>
+          <p>D -> เลี้ยวขวา</p>
+          <p>S -> ถอยหลัง</p>
+        </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-primary" @click="showModal = false">ตกลง</button>
+        </div>
+      </div>
+    </div>
+  </div>
     <div v-else-if="$route.path === '/historical'" id="layoutSidenav_content">
       <router-view></router-view>
     </div>
@@ -201,9 +226,13 @@ export default {
     setInterval(this.getMessage, 1000);
     setInterval(this.updateGasChart, 1000); // อัปเดตทุกๆ 1 วินาที
     this.addKeyboardEventListeners();
+    this.$nextTick(() => {
+    this.showModal = true;
+  });
   },
   data() {
     return {
+      showModal: false,
       simulatedData: [
         //data 1
         {
