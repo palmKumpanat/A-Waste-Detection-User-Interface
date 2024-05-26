@@ -1,0 +1,59 @@
+// const express = require('express');
+// const { createProxyMiddleware } = require('http-proxy-middleware');
+//
+// const app = express();
+// const PORT = process.env.PORT || 3000;
+//
+// // Proxy middleware configuration
+// const proxyOptions = {
+//   target: 'https://notify-api.line.me', // Target API endpoint
+//   changeOrigin: true, // Needed for virtual hosted sites
+//   pathRewrite: {
+//     '^/api/notify': '/api/notify', // Rewrite path
+//   },
+//   logLevel: 'debug', // Log level
+// };
+//
+// // Create the proxy middleware
+// const proxyMiddleware = createProxyMiddleware(proxyOptions);
+//
+// // Mount the proxy middleware
+// app.use('/api/notify', proxyMiddleware);
+//
+// // Start the proxy server
+// app.listen(PORT, () => {
+//   console.log(`Proxy server is running on port ${PORT}`);
+// });
+//
+const express = require('express');
+const axios = require('axios');
+const app = express();
+const port = 3000;
+
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+app.post('/proxy/notify', async (req, res) => {
+  const { message, imageURL } = req.body;
+  const accessToken = 's3X00hZmjmELFT2epvgR2BdfyhSm5CLjy2rYPwyydI8';
+
+  try {
+    const response = await axios.post('https://notify-api.line.me/api/notify', new URLSearchParams({
+      message: message,
+      imageThumbnailUrl: imageURL,
+    }), {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+    });
+    res.json({ success: true, data: response.data });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+app.listen(port, () => {
+  console.log(`Proxy server listening at http://localhost:${port}`);
+});
+

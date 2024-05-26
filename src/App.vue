@@ -49,12 +49,12 @@
           <div class="row">
             <div class="col-xl-4 col-md-6">
               <div class="card text-white mb-4">
-                <div class="card-body">Time : {{ currentData.Time }} </div>
+                <div class="card-body">Time : {{ currentData.currentTime }} </div>
               </div>
             </div>
             <div class="col-xl-4 col-md-6">
               <div class="card text-white mb-4">
-                <div class="card-body">Location : {{ currentData.Location }}</div>
+                <div class="card-body" id="location-id">Location : {{ currentData.Location }}</div>
               </div>
             </div>
             <div class="col-xl-4 col-md-6">
@@ -99,8 +99,10 @@
                           <div class="carousel-item active">
                             <!-- <img :src=currentData.Image_before_src :alt="currentData.Image_before_alt"
                               class="d-block w-100" width="100%" height="320" /> -->
-                            <img id="camera-stream" src="http://172.20.10.3:5000/video_feed_original" alt="Camera Stream"
-                              class="d-block w-100" width="100%" height="320">
+                            <!-- <img id="camera-stream" src="http://172.20.10.3:5000/video_feed_original" alt="Camera Stream" -->
+                            <!--   class="d-block w-100" width="100%" height="320"> -->
+                            <!-- <img id="camera-stream" src="http://192.168.1.45:5000/video_feed_original" -->
+                            <!--   alt="Camera Stream" class="d-block w-100" width="100%" height="320"> -->
                           </div>
                         </div>
                       </div>
@@ -115,7 +117,7 @@
                   <i class="fas fa-chart-bar me-1"></i>
                   Result
                 </div>
-                <div>
+                <div id="capture-image" z-index="999">
                   <div class="card-show-image">
                     <div class="row">
                       <div class="col-xl-12">
@@ -124,8 +126,11 @@
                             <div class="carousel-item active">
                               <!-- <img :src="currentData.Image_predict_src" :alt="currentData.Image_predict_alt"
                                 class="d-block w-100" width="100%" height="320" /> -->
-                                <img id="camera-stream" src="http://172.20.10.3:5000/video_feed_predicted" alt="Camera Stream"
-                              class="d-block w-100" width="100%" height="320">
+                              <!-- <img id="camera-stream" src="http://172.20.10.3:5000/video_feed_predicted" -->
+                              <!--   alt="Camera Stream" class="d-block w-100" width="100%" height="320"> -->
+                              <!-- <img id="camera-stream" src="http://192.168.1.45:5000/video_feed_predicted" -->
+                              <!--   alt="Camera Stream" class="d-block w-100" width="100%" height="320"> -->
+                              <!-- <canvas id="canvas" style="display: none;"></canvas> -->
                             </div>
                           </div>
                         </div>
@@ -135,7 +140,8 @@
                 </div>
               </div>
             </div>
-          </div><hr>
+          </div>
+          <hr>
           <div>
             <div class="container-bottom">
               <section class="right-section mt-2">
@@ -173,7 +179,8 @@
                   </div>
                 </div>
               </section>
-            </div><hr>
+            </div>
+            <hr>
           </div>
         </div>
       </main>
@@ -214,6 +221,13 @@ import Chart from 'chart.js/auto';
 import mqtt from './utils/mqtt/mqtt.js'
 import Paho from 'paho-mqtt';
 import calculatePPM from './utils/mqsensor/calculate.js'
+import { collection, addDoc } from 'firebase/firestore'
+import { ref, getDownloadURL, uploadBytes } from 'firebase/storage'
+import { db, storage } from '@/firebase'
+import sendNotification from './utils/line/line_notify.js'
+import html2canvas from 'html2canvas'
+// import domtoimage from 'dom-to-image-more'
+// import { saveAs } from 'file-saver'
 import axios from 'axios'
 export default {
   name: 'App',
@@ -221,10 +235,16 @@ export default {
   //   this.requestCameraStream();
   // },
   mounted() {
+    setInterval(this.getTime, 1000);
     this.createGasChart();
     mqtt.initMqtt();
     setInterval(this.getMessage, 1000);
     setInterval(this.updateGasChart, 1000); // อัปเดตทุกๆ 1 วินาที
+    this.sendLineNotify();
+    // setInterval(this.createData, 1000);
+    // this.createData();
+    // this.captureImage;
+    // setInterval(this.captureImage(), 3000);
     this.addKeyboardEventListeners();
     this.$nextTick(() => {
     this.showModal = true;
@@ -255,7 +275,7 @@ export default {
           Location: 'Chalong Krung 1, Lat Krabang',
           Weather: '19° 11°',
         },
-        //data 3 
+        //data 3
         {
           Image_before_src: require('./assets/image-3.png'),
           Image_before_alt: 'Image_before_prediction',
@@ -266,19 +286,22 @@ export default {
           Weather: '14° 11°',
         },
       ],
+      captured_image: 'http://192.168.1.45:5000/video_feed_predicted',
+      captureImageURL: '',
       currentDataIndex: 0,
+      currentTime: '',
       gas_data: [{
-        lpg:      0.0,
-        smoke:    0.0,
-        ch4:      0.0,
-        co2:      0.0,
-        co:       0.0,
-        h2:       0.0,
-        aceton:   0.0,
-        nh4:      0.0,
-        propane:  0.0,
-        alcohol:  0.0,
-        tolueno:  0.0
+        lpg: 0.0,
+        smoke: 0.0,
+        ch4: 0.0,
+        co2: 0.0,
+        co: 0.0,
+        h2: 0.0,
+        aceton: 0.0,
+        nh4: 0.0,
+        propane: 0.0,
+        alcohol: 0.0,
+        tolueno: 0.0
       }],
       gasChart: null,
       activeKey: null,
@@ -376,35 +399,132 @@ export default {
     },
     formatClassName(className) {
       const count = this.countClass(className);
-      if (count > 1) {
-        return `${className} x${count}`;
+      if (count > 0) {
+        return this.currentData.Classes.slice();
       } else {
         return className;
       }
     },
-    getMessage(){
-      var message = mqtt.getMessage();
-      if(message){{
-        var results = JSON.parse(message);
-        //console.log(results.mq_data)
-        this.getClassesPredicted(results.class_predicted);
-        var value = calculatePPM(results.mq_data);
-        this.gas_data[0].lpg = value.LPG;
-        this.gas_data[0].smoke = value.Smoke;
-        this.gas_data[0].ch4 = value.CH4;
-        this.gas_data[0].co2 = value.CO2;
-        this.gas_data[0].co = value.CO;
-        this.gas_data[0].h2 = value.H2;
-        this.gas_data[0].aceton = value.ACETON;
-        this.gas_data[0].nh4 = value.NH4;
-        this.gas_data[0].propane = value.Propane;
-        this.gas_data[0].alcohol = value.Alcohol;
-        this.gas_data[0].tolueno = value.TOLUENO;
+    async createData() {
+      try {
+        // const amount = this.currentData.Classes.length;
+        const classes = this.currentData.Classes.slice();
 
-      }}
+        // if (amount > 0) {
+        // await this.captureImage();
+        await addDoc(collection(db, "waste"), {
+          class: classes,
+          image: "",
+          // image: "https://firebasestorage.googleapis.com/v0/b/waste-detection-61420.appspot.com/o/historical-images%2FV0o8ecEvsazqgekZGdjz%2Fimage.png?alt=media&token=8a65fb20-899d-4962-93fe-928eb8a13ed2",
+          locaiton: "Bang Mot, Krung Thep Maha Nakhon",
+          // time: this.currentData.currentTime,
+          time: "25 May 2024 09:27 PM",
+          weather: "18° 11°",
+          gas_data: this.gas_data[0],
+        }).then(() => {
+          console.log("Create data success!");
+        });
+        // }
+      } catch (error) {
+        console.log("Error create data:", error.message);
+      }
     },
-    getClassesPredicted(class_predicted){
+    async uploadImage() {
+      const blob = this.captureImageURL;
+      const storageRef = ref(storage, 'historical-images/captured_image.jpg');
+      const metadata = {
+        contentType: 'image/jpeg'
+      };
+
+      try {
+        const snapshot = await uploadBytes(storageRef, blob, metadata);
+        const downloadURL = await getDownloadURL(snapshot.ref);
+        this.captureImageURL = downloadURL;
+
+        // console.log('File available at', this.captureImageURL);
+        return downloadURL;
+        // alert('Upload successful: ' + downloadURL);
+      } catch (error) {
+        console.error('Upload failed:', error);
+        // alert('Upload failed: ' + error.message);
+      }
+    },
+    // captureImage() {
+    //   const element = document.getElementById('capture-image');
+    //   // const amount = this.currentData.Classes.length;
+    //   // if (element && amount > 0) {
+    //   if (element) {
+    //     html2canvas(element).then((canvas) => {
+    //       const dataURL = canvas.toDataURL("image/png");
+    //       this.captureImageURL = dataURL;
+    //
+    //       // console.log(dataURL);
+    //       // return dataURL;
+    //       // this.captureImageURL = dataURL;
+    //       console.log(this.captureImageURL);
+    //     })
+    //   } else {
+    //     console.error("Element not found");
+    //   }
+    // },
+    captureImage() {
+      return new Promise((resolve, reject) => {
+        const element = document.getElementById('capture-image');
+        if (element) {
+          html2canvas(element, {
+            allowTaint: true,
+            useCORS: true,
+            logging: false,
+            height: window.outerHeight + window.innerHeight,
+            windowHeight: window.outerHeight + window.innerHeight,
+          }).then((canvas) => {
+            const dataURL = canvas.toDataURL("image/png");
+            this.captureImageURL = dataURL;
+            // console.log(this.captureImageURL);
+            resolve(); // Resolve the Promise once the capture is completed
+            // return dataURL;
+          }).catch(error => {
+            console.error("Error capturing image:", error);
+            reject(error); // Reject the Promise if there's an error
+          });
+        } else {
+          console.error("Element not found");
+          reject(new Error("Element not found")); // Reject the Promise if element is not found
+        }
+      });
+    },
+    async sendLineNotify() {
+      const message = "Test line notification from vue.js";
+      // const imageURL = "https://firebasestorage.googleapis.com/v0/b/waste-detection-61420.appspot.com/o/historical-images%2FV0o8ecEvsazqgekZGdjz%2Fimage.png?alt=media&token=8a65fb20-899d-4962-93fe-928eb8a13ed2"
+      // await sendNotification(message, imageURL);
+      await sendNotification(message);
+    },
+    getMessage() {
+      var message = mqtt.getMessage();
+      if (message) {
+        {
+          var results = JSON.parse(message);
+          // console.log(results.mq_data)
+          this.getClassesPredicted(results.class_predicted);
+          var value = calculatePPM(results.mq_data);
+          this.gas_data[0].lpg = value.LPG;
+          this.gas_data[0].smoke = value.Smoke;
+          this.gas_data[0].ch4 = value.CH4;
+          this.gas_data[0].co2 = value.CO2;
+          this.gas_data[0].co = value.CO;
+          this.gas_data[0].h2 = value.H2;
+          this.gas_data[0].aceton = value.ACETON;
+          this.gas_data[0].nh4 = value.NH4;
+          this.gas_data[0].propane = value.Propane;
+          this.gas_data[0].alcohol = value.Alcohol;
+          this.gas_data[0].tolueno = value.TOLUENO;
+        }
+      }
+    },
+    getClassesPredicted(class_predicted) {
+      // console.log('Class predictions received: ', class_predicted);
       this.currentData.Classes = class_predicted;
+      // console.log('Updated currentData.Classes: ', this.currentData.Classes);
     },
     createGasChart() {
       const ctx = document.getElementById('gasChart').getContext('2d');
@@ -428,7 +548,23 @@ export default {
           }
         }
       });
-    }
+    },
+    getTime() {
+      const date = new Date();
+      const day = date.getDate().toString().padStart(2, '0');
+      const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+      const month = monthNames[date.getMonth()];
+      const year = date.getFullYear();
+      let hours = date.getHours();
+      const minutes = date.getMinutes().toString().padStart(2, '0');
+      const ampm = hours >= 12 ? 'PM' : 'AM';
+      hours = hours % 12;
+      hours = hours ? hours : 12; // the hour '0' should be '12'
+      const formattedHours = hours.toString().padStart(2, '0');
+      const formattedTime = `${day} ${month} ${year} ${formattedHours}:${minutes} ${ampm}`;
+      // console.log(formattedTime);
+      this.currentData.currentTime = formattedTime;
+    },
   },
   beforeUnmount() {
     document.removeEventListener('keydown', this.handleKeydown)
@@ -452,7 +588,7 @@ export default {
         alcohol: gas.alcohol > 10 ? 'red' : 'inherit',
         tolueno: gas.tolueno > 10 ? 'red' : 'inherit'
       }));
-    }
+    },
   },
 };
 </script>

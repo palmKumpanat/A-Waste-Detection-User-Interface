@@ -20,5 +20,11 @@ npm run build
 npm run lint
 ```
 
+### Run capture camera server
+```
+cd mqtt
+node predicted_capture.js
+```
+
 ### Customize configuration
 See [Configuration Reference](https://cli.vuejs.org/config/).
