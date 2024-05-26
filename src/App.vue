@@ -293,8 +293,9 @@ export default {
 
       if (myClient && myClient.isConnected()) {
         this.getTime().then((time) => {
+          console.log(time)
           let data = {
-            time: time,
+            //time: time,
             message: message
           };
           console.log(data)
