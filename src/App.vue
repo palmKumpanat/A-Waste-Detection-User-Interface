@@ -99,8 +99,8 @@
                           <div class="carousel-item active">
                             <!-- <img :src=currentData.Image_before_src :alt="currentData.Image_before_alt"
                               class="d-block w-100" width="100%" height="320" /> -->
-                            <!-- <img id="camera-stream" src="http://172.20.10.3:5000/video_feed_original" alt="Camera Stream" -->
-                            <!--   class="d-block w-100" width="100%" height="320"> -->
+                            <img id="camera-stream" src="http://172.20.10.3:5000/video_feed_original"
+                              alt="Camera Stream" class="d-block w-100" width="100%" height="320">
                             <!-- <img id="camera-stream" src="http://192.168.1.45:5000/video_feed_original" -->
                             <!--   alt="Camera Stream" class="d-block w-100" width="100%" height="320"> -->
                           </div>
@@ -126,12 +126,12 @@
                             <div class="carousel-item active">
                               <!-- <img :src="currentData.Image_predict_src" :alt="currentData.Image_predict_alt"
                                 class="d-block w-100" width="100%" height="320" /> -->
-                              <!-- <img id="camera-stream" src="http://172.20.10.3:5000/video_feed_predicted" -->
-                              <!--   alt="Camera Stream" class="d-block w-100" width="100%" height="320"> -->
+                              <img id="capture-image" src="http://172.20.10.3:5000/video_feed_predicted"
+                                alt="Camera Stream" class="d-block w-100" width="100%" height="320">
                               <!-- <img id="camera-stream" src="http://192.168.1.45:5000/video_feed_predicted" -->
                               <!--   alt="Camera Stream" class="d-block w-100" width="100%" height="320"> -->
-                              <img id="capture-image" src="http://www.columbia.edu/~fdc/picture-of-something.jpg"
-                                alt="Camera Stream" class="d-block w-100" width="100%" height="320">
+                              <!-- <img id="capture-image" src="http://www.columbia.edu/~fdc/picture-of-something.jpg" -->
+                              <!--   alt="Camera Stream" class="d-block w-100" width="100%" height="320"> -->
                             </div>
                           </div>
                         </div>
@@ -209,13 +209,13 @@ export default {
   mounted() {
     setInterval(this.getTime, 1000);
     this.createGasChart();
-    this.fetchWeather();
-    // setInterval(this.fetchWeather, 10000);
+    // this.fetchWeather();
+    setInterval(this.fetchWeather(), 1800000);
     mqtt.initMqtt();
     setInterval(this.getMessage, 1000);
     setInterval(this.updateGasChart, 1000); // อัปเดตทุกๆ 1 วินาที
     // this.sendLineNotify();
-    // setInterval(this.createData, 1000);
+    setInterval(this.createData, 1000);
     // this.createData();
     // this.captureImage();
     // setInterval(this.captureImage, 3000);
@@ -255,9 +255,8 @@ export default {
           Weather: '14° 11°',
         },
       ],
-      captured_image: 'http://192.168.1.45:5000/video_feed_predicted',
-      captureImageURL: null,
       currentDataIndex: 0,
+      captureImageURL: null,
       currentTime: null,
       currentWeather: null,
       currentLat: null,
@@ -305,23 +304,23 @@ export default {
     },
     async createData() {
       try {
-        // const amount = this.currentData.Classes.length;
+        const amount = this.currentData.Classes.length;
         const classes = this.currentData.Classes.slice();
 
-        // if (amount > 0) {
-        // await this.captureImage;
-        await addDoc(collection(db, "waste"), {
-          class: classes,
-          image: this.captureImageURL,
-          // image: "https://firebasestorage.googleapis.com/v0/b/waste-detection-61420.appspot.com/o/historical-images%2FV0o8ecEvsazqgekZGdjz%2Fimage.png?alt=media&token=8a65fb20-899d-4962-93fe-928eb8a13ed2",
-          locaiton: this.currentLocation,
-          time: this.currentData.currentTime,
-          weather: `${this.currentWeather} C°`,
-          gas_data: this.gas_data[0],
-        }).then(() => {
-          console.log("Create data success!");
-        });
-        // }
+        if (amount > 0) {
+          await this.captureImage();
+          await addDoc(collection(db, "waste"), {
+            class: classes,
+            image: this.captureImageURL,
+            // image: "https://firebasestorage.googleapis.com/v0/b/waste-detection-61420.appspot.com/o/historical-images%2FV0o8ecEvsazqgekZGdjz%2Fimage.png?alt=media&token=8a65fb20-899d-4962-93fe-928eb8a13ed2",
+            location: this.currentLocation,
+            time: this.currentData.currentTime,
+            weather: `${this.currentWeather} C°`,
+            gas_data: this.gas_data[0],
+          }).then(() => {
+            console.log("Create data success!");
+          });
+        }
       } catch (error) {
         console.log("Error create data:", error.message);
       }
@@ -343,7 +342,7 @@ export default {
           }).then((canvas) => {
             const dataURL = canvas.toDataURL("image/png");
             this.captureImageURL = dataURL;
-            console.log(dataURL);
+            // console.log(dataURL);
             resolve(dataURL); // Resolve the Promise with the captured image data URL
           }).catch(error => {
             console.error("Error capturing image:", error);
@@ -358,9 +357,9 @@ export default {
     },
     async fetchWeather() {
       await this.fetchLocation();
-      const apiKey = "2f24b59115a329daf1ce4082a378e063"
+      const apiKey = process.env.VUE_APP_OPENWEATHERMAP_API_KEY;
+      const googleApiKey = process.env.VUE_APP_GOOGLE_API_KEY;
       const url = `https://api.openweathermap.org/data/2.5/weather?lat=${this.currentLat}&lon=${this.currentLong}&units=metric&appid=${apiKey}`;
-      const googleApiKey = "AIzaSyBJ6Fs26tOoa6r4Uc9Czrn_Qwqa5dpKZX0"
       const googleApiUrl = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${this.currentLat},${this.currentLong}&key=${googleApiKey}`
 
       await axios.get(url)
@@ -373,26 +372,14 @@ export default {
 
       await axios.get(googleApiUrl).
         then(response => {
-          // console.log(response.data);
-          this.currentLocation = `${response.data.results[7].formatted_address}`
+          this.currentLocation = response.data.results[7].formatted_address;
+          // console.log(this.currentLocation);
         })
         .catch(error => {
           console.error("Error google location:", error);
         })
     },
     fetchLocation() {
-      // const success = (position) => {
-      //   this.currentLat = position.coords.latitude;
-      //   this.currentLong = position.coords.longitude;
-      //   // console.log(this.currentLat, this.currentLong);
-      // };
-      //
-      // const error = (err) => {
-      //   console.log(err)
-      // };
-      //
-      // // This will open permission popup
-      // navigator.geolocation.getCurrentPosition(success, error);
       return new Promise((resolve, reject) => {
         const success = (position) => {
           this.currentLat = position.coords.latitude;
@@ -473,11 +460,12 @@ export default {
       const year = date.getFullYear();
       let hours = date.getHours();
       const minutes = date.getMinutes().toString().padStart(2, '0');
+      const seconds = date.getSeconds().toString().padStart(2, '0');
       const ampm = hours >= 12 ? 'PM' : 'AM';
       hours = hours % 12;
       hours = hours ? hours : 12; // the hour '0' should be '12'
       const formattedHours = hours.toString().padStart(2, '0');
-      const formattedTime = `${day} ${month} ${year} ${formattedHours}:${minutes} ${ampm}`;
+      const formattedTime = `${day} ${month} ${year} ${formattedHours}:${minutes}:${seconds} ${ampm}`;
       // console.log(formattedTime);
       this.currentData.currentTime = formattedTime;
     },
