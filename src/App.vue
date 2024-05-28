@@ -99,7 +99,7 @@
                           <div class="carousel-item active">
                             <!-- <img :src=currentData.Image_before_src :alt="currentData.Image_before_alt"
                               class="d-block w-100" width="100%" height="320" /> -->
-                            <img id="camera-stream" src="http://172.20.10.3:5000/video_feed_original"
+                            <img id="camera-stream" src="http://172.20.10.4:5000/video_feed_original"
                               alt="Camera Stream" class="d-block w-100" width="100%" height="320">
                             <!-- <img id="camera-stream" src="http://192.168.1.45:5000/video_feed_original" -->
                             <!--   alt="Camera Stream" class="d-block w-100" width="100%" height="320"> -->
@@ -126,7 +126,7 @@
                             <div class="carousel-item active">
                               <!-- <img :src="currentData.Image_predict_src" :alt="currentData.Image_predict_alt"
                                 class="d-block w-100" width="100%" height="320" /> -->
-                              <img id="capture-image" src="http://172.20.10.3:5000/video_feed_predicted"
+                              <img id="capture-image" src="http://172.20.10.4:5000/video_feed_predicted"
                                 alt="Camera Stream" class="d-block w-100" width="100%" height="320">
                               <!-- <img id="camera-stream" src="http://192.168.1.45:5000/video_feed_predicted" -->
                               <!--   alt="Camera Stream" class="d-block w-100" width="100%" height="320"> -->
@@ -144,11 +144,15 @@
           </div>
           <hr>
           <div>
+            <div class="text-center">
+              Gas Sensor Data
+            </div>
+            <br>
             <div class="container-bottom">
-              <section class="right-section mt-2">
+              <!-- <section class="right-section mt-2">
                 <canvas id="gasChart" width="400" height="200"></canvas>
-              </section>
-              <section class="right-section mt-5">
+              </section> -->
+              <section class="right-section mt-6">
                 <div v-for="(gas, index) in gas_data" :key="index" class="gas-data">
                   <div class="gas-info-column">
                     <div class="gas-info-row">
@@ -223,11 +227,11 @@ import mqtt from './utils/mqtt/mqtt.js'
 import Paho from 'paho-mqtt';
 import calculatePPM from './utils/mqsensor/calculate.js'
 import { collection, addDoc } from 'firebase/firestore'
-import { db } from '@/firebase'
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { db, storage } from '@/firebase'
 import axios from 'axios'
 import sendNotification from './utils/line/line_notify.js'
-import html2canvas from 'html2canvas'
-import axios from 'axios'
+//import html2canvas from 'html2canvas'
 export default {
   name: 'App',
   // mounted() {
@@ -235,15 +239,15 @@ export default {
   // },
   mounted() {
     setInterval(this.getTime, 1000);
-    this.createGasChart();
+    //this.createGasChart();
     // this.fetchWeather();
     setInterval(this.fetchWeather(), 1800000);
     mqtt.initMqtt();
     setInterval(this.getMessage, 1000);
     setInterval(this.updateGasChart, 1000); // อัปเดตทุกๆ 1 วินาที
     // this.sendLineNotify();
-    setInterval(this.createData, 1000);
-    // this.createData();
+    //setInterval(this.createData, 1000);
+    this.createData();
     // this.captureImage;
     // setInterval(this.captureImage(), 3000);
     this.addKeyboardEventListeners();
@@ -348,7 +352,7 @@ export default {
       const myClient = mqtt.getClient();
 
       if (myClient && myClient.isConnected()) {
-        this.getTime().then((time) => {
+        this.getTimeDelay().then((time) => {
           console.log(time)
           let data = {
             //time: time,
@@ -369,7 +373,7 @@ export default {
         console.error('MQTT client is not connected');
       }
     },
-    async getTime(){
+    async getTimeDelay(){
       try {
         const response = await axios.get('http://worldtimeapi.org/api/timezone/Asia/Bangkok');
         const time = response.data.datetime;
@@ -432,35 +436,21 @@ export default {
         console.log("Error create data:", error.message);
       }
     },
-    captureImage() {
-      return new Promise((resolve, reject) => {
+    async captureImage() {
         try {
-          const element = document.getElementById('capture-image');
-          if (!element) {
-            console.error("Element not found");
-            return reject(new Error("Element not found")); // Reject the Promise if element is not found
-          }
-          html2canvas(element, {
-            allowTaint: true,
-            useCORS: true,
-            logging: false,
-            height: element.offsetHeight,
-            windowHeight: element.offsetHeight,
-          }).then((canvas) => {
-            const dataURL = canvas.toDataURL("image/png");
-            this.captureImageURL = dataURL;
-            // console.log(dataURL);
-            resolve(dataURL); // Resolve the Promise with the captured image data URL
-          }).catch(error => {
-            console.error("Error capturing image:", error);
-            reject(error); // Reject the Promise if there's an error
-          });
+          //fetch url with fetch
+          const response = await fetch('http://172.20.10.4:5000/frame_feed_predicted');
+          const storageRef = ref(storage, `historical-images/img_${new Date().getTime()}.jpg`);
 
-        } catch (error) {
-          console.error("Unexpected error:", error);
-          reject(error); // Reject the Promise for any unexpected errors
+          var imageFile = await response.blob();
+          await uploadBytes(storageRef, imageFile).then( async () => {
+            // console.log('Uploaded a blob or file!', snapshot);
+            this.captureImageURL = await getDownloadURL(storageRef);
+            // console.log(this.captureImageURL); 
+          });
+       } catch (error) {
+          console.error("Error capture image:", error);
         }
-      });
     },
     async fetchWeather() {
       await this.fetchLocation();
